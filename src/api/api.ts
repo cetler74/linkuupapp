@@ -780,6 +780,10 @@ export const ownerAPI = {
     const response = await api.get(url);
     return response.data;
   },
+  getBooking: async (bookingId: number): Promise<any> => {
+    const response = await api.get(`/owner/bookings/${bookingId}`);
+    return response.data;
+  },
   updateBooking: async (bookingId: number, bookingData: any): Promise<any> => {
     const response = await api.put(`/owner/bookings/${bookingId}`, bookingData);
     return response.data;

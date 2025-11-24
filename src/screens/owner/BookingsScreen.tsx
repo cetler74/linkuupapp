@@ -1,27 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Modal } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { ownerAPI, type Place } from '../../api/api';
-import { theme } from '../../theme/theme';
-import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-
-interface Booking {
-  id: number;
-  customer_name: string;
-  customer_email: string;
-  customer_phone?: string;
-  service_name: string;
-  employee_name?: string;
-  booking_date: string;
-  booking_time: string;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
-  place_id: number;
-  place_name?: string;
-  total_price?: number;
-}
+import { ownerAPI, type Place, type PlaceEmployee } from '../../api/api';
+import { theme } from '../../theme/theme';
+import CompactStatsBar from '../../components/bookings/CompactStatsBar';
+import FilterChips, { type FilterType } from '../../components/bookings/FilterChips';
+import SectionGroupedBookingList from '../../components/bookings/SectionGroupedBookingList';
+import CalendarMonthView from '../../components/bookings/CalendarMonthView';
+import EmployeeBookingView from '../../components/bookings/EmployeeBookingView';
+import BookingDetailModal from '../../components/bookings/BookingDetailModal';
+import { type Booking } from '../../components/bookings/BookingCard';
 
 const BookingsScreen = () => {
   const { t } = useTranslation();
@@ -29,10 +19,18 @@ const BookingsScreen = () => {
   const [places, setPlaces] = useState<Place[]>([]);
   const [selectedPlaceId, setSelectedPlaceId] = useState<number | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [employees, setEmployees] = useState<PlaceEmployee[]>([]);
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [selectedDate, setSelectedDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [showBookingDetail, setShowBookingDetail] = useState(false);
 
   useEffect(() => {
     fetchPlaces();
@@ -41,12 +39,15 @@ const BookingsScreen = () => {
   useEffect(() => {
     if (selectedPlaceId) {
       fetchBookings();
+      fetchEmployees();
     }
   }, [selectedPlaceId]);
 
-  useEffect(() => {
-    filterBookings();
-  }, [bookings, activeTab]);
+  const employeesMap = useMemo(() => {
+    const map = new Map<number, PlaceEmployee>();
+    employees.forEach((emp) => map.set(emp.id, emp));
+    return map;
+  }, [employees]);
 
   const fetchPlaces = async () => {
     try {
@@ -62,13 +63,25 @@ const BookingsScreen = () => {
     }
   };
 
+  const fetchEmployees = async () => {
+    if (!selectedPlaceId) return;
+    try {
+      const response = await ownerAPI.getPlaceEmployees(selectedPlaceId);
+      setEmployees(Array.isArray(response) ? response : []);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      setEmployees([]);
+    }
+  };
+
   const fetchBookings = async () => {
     if (!selectedPlaceId) return;
     
     try {
       setIsLoading(true);
       const response = await ownerAPI.getPlaceBookings(selectedPlaceId);
-      setBookings(Array.isArray(response) ? response : []);
+      const bookingsList = Array.isArray(response) ? response : [];
+      setBookings(bookingsList);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       setBookings([]);
@@ -78,23 +91,10 @@ const BookingsScreen = () => {
     }
   };
 
-  const filterBookings = () => {
-    const now = new Date();
-    const filtered = bookings.filter(booking => {
-      const bookingDateTime = new Date(`${booking.booking_date}T${booking.booking_time}`);
-      if (activeTab === 'upcoming') {
-        return bookingDateTime >= now && booking.status !== 'cancelled';
-      } else {
-        return bookingDateTime < now || booking.status === 'cancelled';
-      }
-    });
-
-    setFilteredBookings(filtered);
-  };
-
   const handleRefresh = () => {
     setRefreshing(true);
     fetchBookings();
+    fetchEmployees();
   };
 
   const handleAccept = async (bookingId: number) => {
@@ -117,8 +117,17 @@ const BookingsScreen = () => {
     }
   };
 
+  const handleStatusChange = async (bookingId: number, newStatus: string) => {
+    try {
+      await ownerAPI.updateBooking(bookingId, { status: newStatus });
+      fetchBookings();
+    } catch (error) {
+      console.error('Error changing booking status:', error);
+      throw error; // Re-throw to let modal handle the error display
+    }
+  };
+
   const handleAddBooking = () => {
-    // TODO: Navigate to AddBooking screen when implemented
     alert(t('bookings.addBookingComingSoon') || 'Add booking feature coming soon');
   };
 
@@ -131,7 +140,7 @@ const BookingsScreen = () => {
       case 'cancelled':
         return '#ef4444';
       case 'completed':
-        return '#10b981';
+        return '#6b7280';
       default:
         return theme.colors.placeholderLight;
     }
@@ -148,6 +157,67 @@ const BookingsScreen = () => {
     });
   };
 
+  // Calculate stats
+  const stats = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+
+    const todayCount = bookings.filter((b) => b.booking_date === today).length;
+    const pendingCount = bookings.filter((b) => b.status === 'pending').length;
+    const weekTotal = bookings.filter((b) => b.booking_date >= weekStartStr).length;
+
+    return { todayCount, pendingCount, weekTotal };
+  }, [bookings]);
+
+  // Filter bookings based on active filter
+  const filteredBookings = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+    const now = new Date();
+
+    let filtered = bookings.filter((booking) => {
+      const bookingDateTime = new Date(`${booking.booking_date}T${booking.booking_time}`);
+      return bookingDateTime >= now && booking.status !== 'cancelled';
+    });
+
+    switch (filter) {
+      case 'pending':
+        filtered = filtered.filter((b) => b.status === 'pending');
+        break;
+      case 'today':
+        filtered = filtered.filter((b) => b.booking_date === today);
+        break;
+      case 'week':
+        filtered = filtered.filter((b) => b.booking_date >= weekStartStr);
+        break;
+      case 'employee':
+        if (selectedEmployeeId) {
+          filtered = filtered.filter((b) => b.employee_id === selectedEmployeeId);
+        }
+        break;
+      case 'all':
+      default:
+        break;
+    }
+
+    // Always show pending first
+    return filtered.sort((a, b) => {
+      if (a.status === 'pending' && b.status !== 'pending') return -1;
+      if (a.status !== 'pending' && b.status === 'pending') return 1;
+      const dateA = new Date(`${a.booking_date}T${a.booking_time}`);
+      const dateB = new Date(`${b.booking_date}T${b.booking_time}`);
+      return dateA.getTime() - dateB.getTime();
+    });
+  }, [bookings, filter, selectedEmployeeId]);
+
+  const pendingBookings = useMemo(() => {
+    return bookings.filter((b) => b.status === 'pending');
+  }, [bookings]);
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -155,6 +225,32 @@ const BookingsScreen = () => {
         <Text style={styles.headerTitle}>
           {t('bookings.myBookings') || 'My Bookings'}
         </Text>
+        <View style={styles.headerActions}>
+          {pendingBookings.length > 0 && (
+            <TouchableOpacity
+              style={styles.pendingBadge}
+              onPress={() => setFilter('pending')}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="bell" size={20} color="#FFFFFF" />
+              <Text style={styles.pendingBadgeText}>{pendingBookings.length}</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => setShowCalendarModal(true)}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="calendar" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => setShowEmployeeModal(true)}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="account-group" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Place Selector */}
@@ -187,25 +283,22 @@ const BookingsScreen = () => {
         </ScrollView>
       )}
 
-      {/* Tabs */}
-      <View style={styles.tabs}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'upcoming' && styles.tabActive]}
-          onPress={() => setActiveTab('upcoming')}
-        >
-          <Text style={[styles.tabText, activeTab === 'upcoming' && styles.tabTextActive]}>
-            {t('bookings.upcoming') || 'Upcoming'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'past' && styles.tabActive]}
-          onPress={() => setActiveTab('past')}
-        >
-          <Text style={[styles.tabText, activeTab === 'past' && styles.tabTextActive]}>
-            {t('bookings.past') || 'Past'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {/* Compact Stats Bar */}
+      <CompactStatsBar
+        todayCount={stats.todayCount}
+        pendingCount={stats.pendingCount}
+        weekTotal={stats.weekTotal}
+        onTodayPress={() => setFilter('today')}
+        onPendingPress={() => setFilter('pending')}
+        onWeekPress={() => setFilter('week')}
+      />
+
+      {/* Filter Chips */}
+      <FilterChips
+        activeFilter={filter}
+        onFilterChange={setFilter}
+        selectedEmployeeId={selectedEmployeeId}
+      />
 
       {/* Content */}
       {isLoading ? (
@@ -213,115 +306,115 @@ const BookingsScreen = () => {
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : (
-        <ScrollView
-          style={styles.bookingsList}
-          contentContainerStyle={styles.bookingsListContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-          }
-        >
-          <TouchableOpacity onPress={handleAddBooking} style={styles.addBookingCard}>
-            <MaterialCommunityIcons name="plus-circle" size={32} color={theme.colors.primary} />
-            <Text style={styles.addBookingText}>
-              {t('bookings.addNewBooking') || 'Add New Booking'}
-            </Text>
-          </TouchableOpacity>
-          {filteredBookings.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons
-                name="calendar-outline"
-                size={64}
-                color={theme.colors.placeholderLight}
-              />
-              <Text style={styles.emptyTitle}>
-                {t('bookings.noBookings') || 'No Bookings'}
-              </Text>
-              <Text style={styles.emptyText}>
-                {activeTab === 'upcoming'
-                  ? t('bookings.noUpcomingBookings') || 'No upcoming bookings'
-                  : t('bookings.noPastBookings') || 'No past bookings'}
-              </Text>
-            </View>
-          ) : (
-            filteredBookings.map((booking) => (
-              <BookingCard
-                key={booking.id}
-                booking={booking}
-                onAccept={handleAccept}
-                onDecline={handleDecline}
-                formatDateTime={formatDateTime}
-                getStatusColor={getStatusColor}
-              />
-            ))
-          )}
-        </ScrollView>
+        <SectionGroupedBookingList
+          bookings={filteredBookings}
+          employees={employeesMap}
+          onAccept={handleAccept}
+          onDecline={handleDecline}
+          onBookingPress={(booking) => {
+            setSelectedBooking(booking);
+            setShowBookingDetail(true);
+          }}
+          formatDateTime={formatDateTime}
+          getStatusColor={getStatusColor}
+        />
       )}
+
+      {/* Booking Detail Modal */}
+      <BookingDetailModal
+        visible={showBookingDetail}
+        booking={selectedBooking}
+        employee={selectedBooking?.employee_id ? employeesMap.get(selectedBooking.employee_id) : undefined}
+        onClose={() => {
+          setShowBookingDetail(false);
+          setSelectedBooking(null);
+        }}
+        onAccept={handleAccept}
+        onDecline={handleDecline}
+        onStatusChange={handleStatusChange}
+        getStatusColor={getStatusColor}
+      />
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={handleAddBooking}
+        activeOpacity={0.8}
+      >
+        <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
+
+      {/* Calendar Modal */}
+      <Modal
+        visible={showCalendarModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowCalendarModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {t('bookings.calendar') || 'Calendar'}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowCalendarModal(false)}
+              style={styles.modalCloseButton}
+            >
+              <MaterialCommunityIcons name="close" size={24} color={theme.colors.textLight} />
+            </TouchableOpacity>
+          </View>
+          <CalendarMonthView
+            bookings={bookings}
+            employees={employeesMap}
+            selectedDate={selectedDate}
+            onDateSelect={(date) => {
+              setSelectedDate(date);
+              setFilter('all');
+            }}
+            onAccept={handleAccept}
+            onDecline={handleDecline}
+            formatDateTime={formatDateTime}
+            getStatusColor={getStatusColor}
+          />
+        </View>
+      </Modal>
+
+      {/* Employee Filter Modal */}
+      <Modal
+        visible={showEmployeeModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowEmployeeModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {t('bookings.selectEmployee') || 'Select Employee'}
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                setShowEmployeeModal(false);
+                setSelectedEmployeeId(null);
+                setFilter('all');
+              }}
+              style={styles.modalCloseButton}
+            >
+              <MaterialCommunityIcons name="close" size={24} color={theme.colors.textLight} />
+            </TouchableOpacity>
+          </View>
+          <EmployeeBookingView
+            employees={employees}
+            bookings={bookings}
+            selectedDate={selectedDate}
+            onDateSelect={setSelectedDate}
+            onAccept={handleAccept}
+            onDecline={handleDecline}
+            formatDateTime={formatDateTime}
+            getStatusColor={getStatusColor}
+          />
+        </View>
+      </Modal>
     </View>
-  );
-};
-
-interface BookingCardProps {
-  booking: Booking;
-  onAccept: (id: number) => void;
-  onDecline: (id: number) => void;
-  formatDateTime: (date: string, time: string) => string;
-  getStatusColor: (status: string) => string;
-}
-
-const BookingCard: React.FC<BookingCardProps> = ({
-  booking,
-  onAccept,
-  onDecline,
-  formatDateTime,
-  getStatusColor,
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <Card style={styles.bookingCard}>
-      <View style={styles.bookingHeader}>
-        <View style={styles.customerAvatar}>
-          <Text style={styles.customerInitials}>
-            {booking.customer_name[0].toUpperCase()}
-          </Text>
-        </View>
-        <View style={styles.bookingInfo}>
-          <Text style={styles.customerName}>{booking.customer_name}</Text>
-          <Text style={styles.bookingDateTime}>
-            {formatDateTime(booking.booking_date, booking.booking_time)}
-          </Text>
-          <Text style={styles.serviceName}>{booking.service_name}</Text>
-          {booking.employee_name && (
-            <Text style={styles.employeeName}>
-              {t('bookings.with') || 'with'} {booking.employee_name}
-            </Text>
-          )}
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '20' }]}>
-          <Text style={[styles.statusText, { color: getStatusColor(booking.status) }]}>
-            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-          </Text>
-        </View>
-      </View>
-      {booking.status === 'pending' && (
-        <View style={styles.bookingActions}>
-          <Button
-            title={t('bookings.decline') || 'Decline'}
-            onPress={() => onDecline(booking.id)}
-            variant="secondary"
-            size="sm"
-            style={styles.actionButton}
-          />
-          <Button
-            title={t('bookings.accept') || 'Accept'}
-            onPress={() => onAccept(booking.id)}
-            variant="primary"
-            size="sm"
-            style={styles.actionButton}
-          />
-        </View>
-      )}
-    </Card>
   );
 };
 
@@ -343,6 +436,29 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold as '700',
     color: '#FFFFFF',
+    flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f59e0b',
+    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    gap: theme.spacing.xs / 2,
+  },
+  pendingBadgeText: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold as '700',
+    color: '#FFFFFF',
+  },
+  headerButton: {
+    padding: theme.spacing.xs,
   },
   placeSelector: {
     maxHeight: 60,
@@ -374,137 +490,47 @@ const styles = StyleSheet.create({
   placeChipTextActive: {
     color: '#FFFFFF',
   },
-  tabs: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
-    paddingHorizontal: theme.spacing.md,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: theme.spacing.md,
-    alignItems: 'center',
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
-  },
-  tabActive: {
-    borderBottomColor: theme.colors.primary,
-  },
-  tabText: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.bold as '700',
-    color: theme.colors.placeholderLight,
-  },
-  tabTextActive: {
-    color: theme.colors.primary,
-  },
-  bookingsList: {
-    flex: 1,
-  },
-  bookingsListContent: {
-    padding: theme.spacing.md,
-  },
-  addBookingCard: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: theme.spacing.xl,
-    backgroundColor: theme.colors.backgroundLight,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    borderStyle: 'dashed',
-    marginBottom: theme.spacing.md,
-  },
-  addBookingText: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.medium as '500',
-    color: theme.colors.primary,
-    marginTop: theme.spacing.sm,
-  },
-  bookingCard: {
-    marginBottom: theme.spacing.md,
-  },
-  bookingHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: theme.spacing.md,
-  },
-  customerAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  customerInitials: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold as '700',
-    color: '#FFFFFF',
-  },
-  bookingInfo: {
-    flex: 1,
-  },
-  customerName: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.bold as '700',
-    color: theme.colors.textLight,
-    marginBottom: theme.spacing.xs,
-  },
-  bookingDateTime: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.placeholderLight,
-    marginBottom: theme.spacing.xs,
-  },
-  serviceName: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.textLight,
-    marginBottom: theme.spacing.xs,
-  },
-  employeeName: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.placeholderLight,
-  },
-  statusBadge: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.full,
-  },
-  statusText: {
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: theme.typography.fontWeight.bold as '700',
-  },
-  bookingActions: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.md,
-  },
-  actionButton: {
-    flex: 1,
-  },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyContainer: {
-    flex: 1,
+  fab: {
+    position: 'absolute',
+    right: theme.spacing.md,
+    bottom: theme.spacing.md,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: theme.spacing.xl,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
-  emptyTitle: {
+  modalContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.backgroundLight,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+    backgroundColor: theme.colors.primary,
+  },
+  modalTitle: {
     fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold as '700',
-    color: theme.colors.textLight,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
+    color: '#FFFFFF',
   },
-  emptyText: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.placeholderLight,
-    textAlign: 'center',
-    marginBottom: theme.spacing.lg,
+  modalCloseButton: {
+    padding: theme.spacing.xs,
   },
 });
 

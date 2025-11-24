@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Switch, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Switch, Alert, Modal } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
-import { ownerAPI, type Place } from '../../api/api';
+import { ownerAPI, authAPI, type Place } from '../../api/api';
 import { theme } from '../../theme/theme';
 import Card from '../../components/ui/Card';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import i18n from '../../i18n/i18n';
 
 interface FeatureSettings {
   bookings_enabled: boolean;
@@ -34,6 +35,8 @@ const OwnerSettingsScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState(i18n.language || 'en');
 
   useEffect(() => {
     fetchPlaces();
@@ -44,6 +47,11 @@ const OwnerSettingsScreen = () => {
       fetchFeatureSettings();
     }
   }, [selectedPlaceId]);
+
+  useEffect(() => {
+    // Sync current language with i18n
+    setCurrentLanguage(i18n.language || 'en');
+  }, []);
 
   const fetchPlaces = async () => {
     try {
@@ -106,6 +114,25 @@ const OwnerSettingsScreen = () => {
     }
   };
 
+  const handleLanguageChange = async (languageCode: string) => {
+    try {
+      setCurrentLanguage(languageCode);
+      await i18n.changeLanguage(languageCode);
+      setShowLanguageModal(false);
+      
+      // Save language preference to backend
+      try {
+        await authAPI.updateLanguagePreference(languageCode);
+      } catch (error) {
+        console.error('Error saving language preference:', error);
+        // Don't show error to user, language change still works locally
+      }
+    } catch (error) {
+      console.error('Error changing language:', error);
+      Alert.alert(t('common.error') || 'Error', t('settings.languageChangeError') || 'Failed to change language');
+    }
+  };
+
   const handleLogout = () => {
     Alert.alert(
       t('settings.logout') || 'Log Out',
@@ -124,6 +151,20 @@ const OwnerSettingsScreen = () => {
         },
       ]
     );
+  };
+
+  const languages = [
+    { code: 'en', name: t('language.english') || 'English', nativeName: 'English' },
+    { code: 'pt', name: t('language.portuguese') || 'Português', nativeName: 'Português' },
+    { code: 'es', name: t('language.spanish') || 'Español', nativeName: 'Español' },
+    { code: 'fr', name: t('language.french') || 'Français', nativeName: 'Français' },
+    { code: 'de', name: t('language.german') || 'Deutsch', nativeName: 'Deutsch' },
+    { code: 'it', name: t('language.italian') || 'Italiano', nativeName: 'Italiano' },
+  ];
+
+  const getCurrentLanguageName = () => {
+    const lang = languages.find(l => l.code === currentLanguage);
+    return lang ? lang.nativeName : 'English';
   };
 
   const selectedPlace = places.find(p => p.id === selectedPlaceId);
@@ -301,6 +342,12 @@ const OwnerSettingsScreen = () => {
               }}
             />
             <SettingItem
+              icon="translate"
+              title={t('settings.language') || 'Language'}
+              subtitle={getCurrentLanguageName()}
+              onPress={() => setShowLanguageModal(true)}
+            />
+            <SettingItem
               icon="bell-outline"
               title={t('settings.notificationPreferences') || 'Notification Preferences'}
               subtitle={t('settings.notificationPreferencesDesc') || 'Manage notification settings'}
@@ -333,6 +380,60 @@ const OwnerSettingsScreen = () => {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Language Selection Modal */}
+      <Modal
+        visible={showLanguageModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowLanguageModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {t('settings.selectLanguage') || 'Select Language'}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowLanguageModal(false)}
+              style={styles.modalCloseButton}
+            >
+              <MaterialCommunityIcons name="close" size={24} color={theme.colors.textLight} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalContent}>
+            {languages.map((language) => (
+              <TouchableOpacity
+                key={language.code}
+                style={[
+                  styles.languageOption,
+                  currentLanguage === language.code && styles.languageOptionActive,
+                ]}
+                onPress={() => handleLanguageChange(language.code)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.languageOptionContent}>
+                  <Text style={[
+                    styles.languageName,
+                    currentLanguage === language.code && styles.languageNameActive,
+                  ]}>
+                    {language.nativeName}
+                  </Text>
+                  <Text style={styles.languageCode}>
+                    {language.name}
+                  </Text>
+                </View>
+                {currentLanguage === language.code && (
+                  <MaterialCommunityIcons
+                    name="check-circle"
+                    size={24}
+                    color={theme.colors.primary}
+                  />
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -550,6 +651,60 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.medium,
     color: '#ef4444',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.backgroundLight,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderLight,
+  },
+  modalTitle: {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.textLight,
+  },
+  modalCloseButton: {
+    padding: theme.spacing.xs,
+  },
+  modalContent: {
+    flex: 1,
+  },
+  languageOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderLight,
+  },
+  languageOptionActive: {
+    backgroundColor: theme.colors.primary + '10',
+  },
+  languageOptionContent: {
+    flex: 1,
+  },
+  languageName: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.textLight,
+    marginBottom: theme.spacing.xs / 2,
+  },
+  languageNameActive: {
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.primary,
+  },
+  languageCode: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.placeholderLight,
   },
 });
 
