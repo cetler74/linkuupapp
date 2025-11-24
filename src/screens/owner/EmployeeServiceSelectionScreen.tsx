@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { ownerAPI, type PlaceService } from '../../api/api';
 import { theme } from '../../theme/theme';
@@ -37,27 +37,39 @@ const EmployeeServiceSelectionScreen = () => {
   };
 
   const toggleService = (serviceId: number) => {
-    setSelectedServices(prev =>
-      prev.includes(serviceId)
+    console.log('🟢 toggleService called with serviceId:', serviceId);
+    console.log('🟢 Current selectedServices before toggle:', selectedServices);
+    setSelectedServices(prev => {
+      const newSelection = prev.includes(serviceId)
         ? prev.filter(id => id !== serviceId)
-        : [...prev, serviceId]
-    );
+        : [...prev, serviceId];
+      console.log('🟢 New selectedServices after toggle:', newSelection);
+      return newSelection;
+    });
   };
 
   const handleDone = () => {
-    // Pass selected services back via navigation - update the EmployeeForm route params
-    const parent = navigation.getParent();
-    if (parent) {
-      const state = parent.getState();
-      const employeeFormRoute = state?.routes?.find((r: any) => r.name === 'EmployeeForm');
-      if (employeeFormRoute) {
-        parent.setParams({
-          ...employeeFormRoute.params,
-          selectedServiceIds: selectedServices,
-        } as never);
-      }
-    }
-    navigation.goBack();
+    // Pass selected services back via navigation params
+    const { employeeId } = (route.params as any) || {};
+    
+    console.log('🟢 EmployeeServiceSelection handleDone - selectedServices:', selectedServices);
+    console.log('🟢 EmployeeServiceSelection handleDone - placeId:', placeId);
+    console.log('🟢 EmployeeServiceSelection handleDone - employeeId:', employeeId);
+    
+    // Navigate back to EmployeeForm with updated params
+    // Using navigate will update the existing screen if it's in the stack
+    // This preserves form state while updating the selectedServiceIds param
+    (navigation as any).navigate('EmployeeForm', {
+      placeId,
+      employeeId: employeeId || undefined,
+      selectedServiceIds: selectedServices,
+    });
+    
+    console.log('🟢 Navigation called with params:', {
+      placeId,
+      employeeId: employeeId || undefined,
+      selectedServiceIds: selectedServices,
+    });
   };
 
   return (
@@ -96,7 +108,10 @@ const EmployeeServiceSelectionScreen = () => {
             return (
               <TouchableOpacity
                 key={service.id}
-                onPress={() => toggleService(service.id)}
+                onPress={() => {
+                  console.log('🟢 Service card pressed, serviceId:', service.id);
+                  toggleService(service.id);
+                }}
                 activeOpacity={0.7}
               >
                 <Card style={[styles.serviceCard, isSelected && styles.serviceCardSelected]}>

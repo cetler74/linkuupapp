@@ -8,6 +8,7 @@ import { theme } from '../../theme/theme';
 import Card from '../../components/ui/Card';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import i18n from '../../i18n/i18n';
+import Logo from '../../components/common/Logo';
 
 interface FeatureSettings {
   bookings_enabled: boolean;
@@ -173,9 +174,12 @@ const OwnerSettingsScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {t('settings.title') || 'Settings'}
-        </Text>
+        <View style={styles.headerBranding}>
+          <Logo width={32} height={32} color="#FFFFFF" animated={false} />
+          <Text style={styles.headerTitle}>
+            {t('settings.title') || 'Settings'}
+          </Text>
+        </View>
       </View>
 
       <ScrollView
@@ -516,17 +520,23 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.backgroundLight,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.primary,
+  },
+  headerBranding: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
   },
   headerTitle: {
     fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textLight,
-    textAlign: 'center',
+    color: '#FFFFFF',
   },
   scrollView: {
     flex: 1,

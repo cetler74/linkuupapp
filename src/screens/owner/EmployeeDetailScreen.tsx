@@ -79,30 +79,6 @@ const EmployeeDetailScreen = () => {
     );
   };
 
-  const handleDeletePhoto = () => {
-    if (!employee) return;
-    Alert.alert(
-      t('common.confirmDelete') || 'Confirm Delete',
-      t('employees.deletePhotoConfirm') || 'Are you sure you want to delete this photo?',
-      [
-        { text: t('common.cancel') || 'Cancel', style: 'cancel' },
-        {
-          text: t('common.delete') || 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await ownerAPI.deleteEmployeePhoto(employee.id);
-              fetchEmployeeDetails(); // Refresh to update photo
-            } catch (error) {
-              console.error('Error deleting photo:', error);
-              Alert.alert(t('common.error') || 'Error', t('employees.deletePhotoError') || 'Failed to delete photo');
-            }
-          },
-        },
-      ]
-    );
-  };
-
   const handleCall = () => {
     if (employee?.phone) {
       Linking.openURL(`tel:${employee.phone}`);
@@ -145,7 +121,7 @@ const EmployeeDetailScreen = () => {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color={theme.colors.textLight} />
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
             {t('employees.employeeDetails') || 'Employee Details'}
@@ -164,7 +140,7 @@ const EmployeeDetailScreen = () => {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color={theme.colors.textLight} />
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
             {t('employees.employeeDetails') || 'Employee Details'}
@@ -201,15 +177,7 @@ const EmployeeDetailScreen = () => {
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
               {avatarUrl ? (
-                <>
-                  <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-                  <TouchableOpacity
-                    style={styles.deletePhotoButton}
-                    onPress={handleDeletePhoto}
-                  >
-                    <MaterialCommunityIcons name="delete" size={18} color={theme.colors.secondary} />
-                  </TouchableOpacity>
-                </>
+                <Image source={{ uri: avatarUrl }} style={styles.avatar} />
               ) : (
                 <View style={styles.avatar}>
                   <Text style={styles.avatarInitials}>
@@ -370,8 +338,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.primary,
   },
   backButton: {
     padding: theme.spacing.xs,
@@ -379,9 +346,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textLight,
-    textAlign: 'center',
+    fontWeight: theme.typography.fontWeight.bold as '700',
+    color: '#FFFFFF',
+    textAlign: 'left',
   },
   headerRight: {
     width: 40,
@@ -426,16 +393,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  deletePhotoButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    borderRadius: theme.borderRadius.full,
-    padding: theme.spacing.xs,
-    borderWidth: 1,
-    borderColor: theme.colors.borderLight,
   },
   avatarInitials: {
     fontSize: theme.typography.fontSize.xxl,

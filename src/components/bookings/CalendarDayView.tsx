@@ -17,6 +17,7 @@ interface CalendarDayViewProps {
   bookings: Booking[];
   employees?: Map<number, PlaceEmployee>;
   selectedDate: string;
+  selectedEmployeeIds?: Set<number>;
   onDateChange: (date: string) => void;
   onBookingPress?: (booking: Booking) => void;
   onAccept: (id: number) => void;
@@ -29,6 +30,7 @@ const CalendarDayView: React.FC<CalendarDayViewProps> = ({
   bookings,
   employees,
   selectedDate,
+  selectedEmployeeIds,
   onDateChange,
   onBookingPress,
   onAccept,
@@ -142,6 +144,14 @@ const CalendarDayView: React.FC<CalendarDayViewProps> = ({
               const employeePhotoUrl = employee?.photo_url ? getImageUrl(employee.photo_url) : null;
               const employeeColor = employee?.color_code || theme.colors.primary;
               const statusColor = getStatusColor(booking.status);
+              
+              // Use employee color when comparing multiple employees, otherwise use status color
+              const borderColor = selectedEmployeeIds && selectedEmployeeIds.size > 1 
+                ? employeeColor 
+                : statusColor;
+              const indicatorColor = selectedEmployeeIds && selectedEmployeeIds.size > 1
+                ? employeeColor
+                : statusColor;
 
               return (
                 <TouchableOpacity
@@ -159,7 +169,7 @@ const CalendarDayView: React.FC<CalendarDayViewProps> = ({
                     onBookingPress?.(booking);
                   }}
                 >
-                  <Card style={[styles.bookingCardContent, { borderLeftColor: statusColor }]}>
+                  <Card style={[styles.bookingCardContent, { borderLeftColor: borderColor }]}>
                     <View style={styles.bookingCardHeader}>
                       {employeePhotoUrl ? (
                         <Image
@@ -185,10 +195,10 @@ const CalendarDayView: React.FC<CalendarDayViewProps> = ({
                       <View
                         style={[
                           styles.statusIndicator,
-                          { backgroundColor: statusColor + '20' },
+                          { backgroundColor: indicatorColor + '20' },
                         ]}
                       >
-                        <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                        <View style={[styles.statusDot, { backgroundColor: indicatorColor }]} />
                       </View>
                     </View>
                     {booking.status === 'pending' && (

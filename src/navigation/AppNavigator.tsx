@@ -33,6 +33,8 @@ import CustomersScreen from '../screens/owner/CustomersScreen';
 import OwnerSettingsScreen from '../screens/owner/OwnerSettingsScreen';
 import AddPlaceScreen from '../screens/owner/AddPlaceScreen';
 import EditPlaceScreen from '../screens/owner/EditPlaceScreen';
+import AddBookingScreen from '../screens/owner/AddBookingScreen';
+import AddCustomerScreen from '../screens/owner/AddCustomerScreen';
 import ServicesManagementScreen from '../screens/owner/ServicesManagementScreen';
 import EmployeesManagementScreen from '../screens/owner/EmployeesManagementScreen';
 import EmployeeFormScreen from '../screens/owner/EmployeeFormScreen';
@@ -179,6 +181,8 @@ export const AppNavigator = () => {
             <Stack.Screen name="PlaceDetails" component={OwnerPlaceDetailsScreen} />
             <Stack.Screen name="AddPlace" component={AddPlaceScreen} />
             <Stack.Screen name="EditPlace" component={EditPlaceScreen} />
+            <Stack.Screen name="AddBooking" component={AddBookingScreen} />
+            <Stack.Screen name="AddCustomer" component={AddCustomerScreen} />
             <Stack.Screen name="ServicesManagement" component={ServicesManagementScreen} />
             <Stack.Screen name="EmployeesManagement" component={EmployeesManagementScreen} />
             <Stack.Screen name="EmployeeDetail" component={EmployeeDetailScreen} />

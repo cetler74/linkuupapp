@@ -8,6 +8,7 @@ import { theme } from '../../theme/theme';
 import Card from '../../components/ui/Card';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Logo from '../../components/common/Logo';
 
 interface DashboardStats {
   registered_places: number;
@@ -138,14 +139,12 @@ const OwnerDashboardScreen = () => {
     >
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {(user?.first_name || user?.email || 'O')[0].toUpperCase()}
-            </Text>
-          </View>
+        <View style={styles.headerBranding}>
+          <Logo width={32} height={32} color="#FFFFFF" animated={false} />
+          <Text style={styles.headerTitle}>
+            {t('dashboard.title') || 'Dashboard'}
+          </Text>
         </View>
-        <Text style={styles.headerTitle}>LinkUup</Text>
         <TouchableOpacity
           style={styles.headerRight}
           onPress={() => navigation.navigate('Notifications' as never)}
@@ -321,28 +320,16 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.md,
     backgroundColor: theme.colors.primary,
   },
-  headerLeft: {
-    width: 48,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.primary,
+  headerBranding: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: '#FFFFFF',
+    gap: theme.spacing.sm,
+    flex: 1,
   },
   headerTitle: {
-    flex: 1,
     fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
     color: '#FFFFFF',
-    textAlign: 'center',
   },
   headerRight: {
     width: 48,

@@ -61,13 +61,15 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
 
   const employeePhotoUrl = employee?.photo_url ? getImageUrl(employee.photo_url) : null;
   const employeeColor = employee?.color_code || theme.colors.primary;
-  const statusColor = getStatusColor(booking.status);
-  const isPending = booking.status === 'pending';
+  const bookingData = fullBookingData || booking;
+  const currentStatus = bookingData.status || booking.status;
+  const statusColor = getStatusColor(currentStatus);
+  const isPending = currentStatus === 'pending';
   const canChangeStatus = !isPending && !!onStatusChange;
   
   // Debug logging
   if (__DEV__) {
-    console.log('BookingDetailModal - Status:', booking.status, 'isPending:', isPending, 'onStatusChange:', !!onStatusChange, 'canChangeStatus:', canChangeStatus);
+    console.log('BookingDetailModal - Status:', currentStatus, 'isPending:', isPending, 'onStatusChange:', !!onStatusChange, 'canChangeStatus:', canChangeStatus);
   }
 
   const formatDate = (dateStr: string) => {
@@ -133,7 +135,7 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
       completed: t('bookings.completed') || 'Completed',
     };
 
-    const currentStatusLabel = statusLabels[booking.status] || booking.status;
+    const currentStatusLabel = statusLabels[currentStatus] || currentStatus;
     const newStatusLabel = statusLabels[newStatus] || newStatus;
 
     Alert.alert(
@@ -145,7 +147,7 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
       [
         { text: t('common.cancel') || 'Cancel', style: 'cancel' },
         {
-          text: t('common.confirm') || 'Confirm',
+          text: t('bookings.changeStatus') || 'Change Status',
           onPress: async () => {
             try {
               setChangingStatus(true);
@@ -179,10 +181,8 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
     ];
     
     // Return all statuses except the current one
-    return allStatuses.filter(status => status !== booking.status);
+    return allStatuses.filter(status => status !== currentStatus);
   };
-
-  const bookingData = fullBookingData || booking;
 
   return (
     <Modal
@@ -217,7 +217,7 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
             >
               <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
               <Text style={[styles.statusText, { color: statusColor }]}>
-                {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                {currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)}
               </Text>
               {canChangeStatus && (
                 <MaterialCommunityIcons 
@@ -350,7 +350,19 @@ const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
           {booking.employee_name && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <MaterialCommunityIcons name="account-tie" size={20} color={theme.colors.primary} />
+                {employeePhotoUrl ? (
+                  <Image
+                    source={{ uri: employeePhotoUrl }}
+                    style={styles.sectionHeaderIcon}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View style={[styles.sectionHeaderIcon, { backgroundColor: employeeColor }]}>
+                    <Text style={styles.sectionHeaderIconText}>
+                      {booking.employee_name[0].toUpperCase()}
+                    </Text>
+                  </View>
+                )}
                 <Text style={styles.sectionTitle}>
                   {t('bookings.employee') || 'Employee'}
                 </Text>
@@ -605,6 +617,18 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderLight,
+  },
+  sectionHeaderIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: theme.borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionHeaderIconText: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.bold as '700',
+    color: '#FFFFFF',
   },
   sectionTitle: {
     fontSize: theme.typography.fontSize.base,

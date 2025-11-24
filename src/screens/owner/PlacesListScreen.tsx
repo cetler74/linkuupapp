@@ -8,6 +8,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import Logo from '../../components/common/Logo';
 
 const PlacesListScreen = () => {
   const { t } = useTranslation();
@@ -90,9 +91,12 @@ const PlacesListScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {t('places.myPlaces') || 'My Places'}
-        </Text>
+        <View style={styles.headerBranding}>
+          <Logo width={32} height={32} color="#FFFFFF" animated={false} />
+          <Text style={styles.headerTitle}>
+            {t('places.myPlaces') || 'Places'}
+          </Text>
+        </View>
       </View>
 
       {/* Places List */}
@@ -134,13 +138,6 @@ const PlacesListScreen = () => {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          <TouchableOpacity onPress={handleAddPlace} style={styles.addPlaceCard}>
-            <MaterialCommunityIcons name="plus-circle" size={32} color={theme.colors.primary} />
-            <Text style={styles.addPlaceText}>
-              {t('places.addNewPlace') || 'Add New Place'}
-            </Text>
-          </TouchableOpacity>
-
           {places.map((place) => {
             const firstImage = place.images && place.images.length > 0 ? place.images[0] : null;
             const rawImageUrl = firstImage?.image_url;
@@ -251,6 +248,15 @@ const PlacesListScreen = () => {
           })}
         </ScrollView>
       )}
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={handleAddPlace}
+        activeOpacity={0.8}
+      >
+        <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
     </View>
   );
 };
@@ -263,11 +269,16 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
     backgroundColor: theme.colors.primary,
+  },
+  headerBranding: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
   },
   headerTitle: {
     fontSize: theme.typography.fontSize.xl,
@@ -280,22 +291,21 @@ const styles = StyleSheet.create({
   placesListContent: {
     padding: theme.spacing.md,
   },
-  addPlaceCard: {
+  fab: {
+    position: 'absolute',
+    right: theme.spacing.md,
+    bottom: theme.spacing.md,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: theme.spacing.xl,
-    backgroundColor: theme.colors.backgroundLight,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    borderStyle: 'dashed',
-    marginBottom: theme.spacing.md,
-  },
-  addPlaceText: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.medium as '500',
-    color: theme.colors.primary,
-    marginTop: theme.spacing.sm,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   placeCard: {
     marginBottom: theme.spacing.md,

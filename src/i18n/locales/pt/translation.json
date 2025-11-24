@@ -402,6 +402,9 @@
     "employeeSchedule": "Horário dos Funcionários",
     "selectEmployeeToView": "Selecione um funcionário para ver as suas reservas",
     "selectEmployee": "Selecionar Funcionário",
+    "selectEmployees": "Selecionar Funcionários",
+    "selectAll": "Selecionar Todos",
+    "clearAll": "Limpar",
     "today": "hoje",
     "thisWeek": "esta semana",
     "filters": {
@@ -432,7 +435,7 @@
     "declineConfirmMessage": "Tem certeza de que deseja recusar esta reserva?",
     "changeStatus": "Alterar Estado",
     "selectStatus": "Selecionar Estado",
-    "changeStatusConfirm": "Alterar estado de {current} para {new}?",
+    "changeStatusConfirm": "Alterar estado de {{current}} para {{new}}?",
     "statusChangeError": "Falha ao alterar estado"
   },
   "owner": {
@@ -1409,5 +1412,36 @@
     "hideDetails": "Ocultar detalhes",
     "accept": "Aceitar",
     "decline": "Recusar"
+  },
+  "campaigns": {
+    "title": "Gestão de Campanhas",
+    "noCampaigns": "Sem Campanhas",
+    "noCampaignsDesc": "Crie a sua primeira campanha promocional para atrair mais clientes.",
+    "createCampaign": "Criar Campanha",
+    "editCampaign": "Editar Campanha",
+    "name": "Nome da Campanha",
+    "namePlaceholder": "Digite o nome da campanha",
+    "description": "Descrição",
+    "descriptionPlaceholder": "Digite a descrição (opcional)",
+    "bannerMessage": "Mensagem do Banner",
+    "bannerMessagePlaceholder": "Digite a mensagem do banner",
+    "campaignType": "Tipo de Campanha",
+    "priceReduction": "Redução de Preço",
+    "rewardsIncrease": "Aumento de Recompensas",
+    "freeService": "Serviço Grátis",
+    "messaging": "Mensagens",
+    "startDate": "Data de Início",
+    "endDate": "Data de Fim",
+    "discountType": "Tipo de Desconto",
+    "percentage": "Percentagem",
+    "fixed": "Valor Fixo",
+    "discountValue": "Valor do Desconto",
+    "active": "Ativo",
+    "inactive": "Inativo",
+    "confirmDelete": "Tem certeza de que deseja excluir esta campanha?",
+    "deleteSuccess": "Campanha excluída com sucesso!",
+    "deleteError": "Falha ao excluir campanha.",
+    "fillAllFields": "Por favor, preencha todos os campos obrigatórios.",
+    "saveError": "Falha ao salvar campanha."
   }
 }

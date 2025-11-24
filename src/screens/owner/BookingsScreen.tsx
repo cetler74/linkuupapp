@@ -12,6 +12,7 @@ import CalendarMonthView from '../../components/bookings/CalendarMonthView';
 import EmployeeBookingView from '../../components/bookings/EmployeeBookingView';
 import BookingDetailModal from '../../components/bookings/BookingDetailModal';
 import { type Booking } from '../../components/bookings/BookingCard';
+import Logo from '../../components/common/Logo';
 
 const BookingsScreen = () => {
   const { t } = useTranslation();
@@ -75,16 +76,18 @@ const BookingsScreen = () => {
   };
 
   const fetchBookings = async () => {
-    if (!selectedPlaceId) return;
+    if (!selectedPlaceId) return [];
     
     try {
       setIsLoading(true);
       const response = await ownerAPI.getPlaceBookings(selectedPlaceId);
       const bookingsList = Array.isArray(response) ? response : [];
       setBookings(bookingsList);
+      return bookingsList;
     } catch (error) {
       console.error('Error fetching bookings:', error);
       setBookings([]);
+      return [];
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -109,7 +112,7 @@ const BookingsScreen = () => {
 
   const handleDecline = async (bookingId: number) => {
     try {
-      await ownerAPI.cancelBooking(bookingId);
+      await ownerAPI.updateBooking(bookingId, { status: 'cancelled' });
       fetchBookings();
     } catch (error) {
       console.error('Error declining booking:', error);
@@ -120,7 +123,22 @@ const BookingsScreen = () => {
   const handleStatusChange = async (bookingId: number, newStatus: string) => {
     try {
       await ownerAPI.updateBooking(bookingId, { status: newStatus });
-      fetchBookings();
+      const updatedBookings = await fetchBookings();
+      // Update selectedBooking if it's the one that was changed
+      if (selectedBooking && selectedBooking.id === bookingId) {
+        const updatedBooking = updatedBookings.find(b => b.id === bookingId);
+        if (updatedBooking) {
+          setSelectedBooking(updatedBooking);
+        } else {
+          // If booking not found in list, fetch it directly
+          try {
+            const bookingDetails = await ownerAPI.getBooking(bookingId);
+            setSelectedBooking(bookingDetails);
+          } catch (err) {
+            console.error('Error fetching updated booking:', err);
+          }
+        }
+      }
     } catch (error) {
       console.error('Error changing booking status:', error);
       throw error; // Re-throw to let modal handle the error display
@@ -128,7 +146,14 @@ const BookingsScreen = () => {
   };
 
   const handleAddBooking = () => {
-    alert(t('bookings.addBookingComingSoon') || 'Add booking feature coming soon');
+    if (!selectedPlaceId) {
+      alert(t('bookings.selectPlaceFirst') || 'Please select a place first');
+      return;
+    }
+    // Navigate to booking creation screen
+    // Note: This screen needs to be created - for now it will show an error
+    // but the navigation structure is in place
+    (navigation as any).navigate('AddBooking', { placeId: selectedPlaceId });
   };
 
   const getStatusColor = (status: string) => {
@@ -222,9 +247,12 @@ const BookingsScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {t('bookings.myBookings') || 'My Bookings'}
-        </Text>
+        <View style={styles.headerBranding}>
+          <Logo width={32} height={32} color="#FFFFFF" animated={false} />
+          <Text style={styles.headerTitle}>
+            {t('bookings.myBookings') || 'Bookings'}
+          </Text>
+        </View>
         <View style={styles.headerActions}>
           {pendingBookings.length > 0 && (
             <TouchableOpacity
@@ -432,11 +460,16 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.md,
     backgroundColor: theme.colors.primary,
   },
+  headerBranding: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    flex: 1,
+  },
   headerTitle: {
     fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold as '700',
     color: '#FFFFFF',
-    flex: 1,
   },
   headerActions: {
     flexDirection: 'row',

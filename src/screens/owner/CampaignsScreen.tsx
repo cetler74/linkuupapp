@@ -8,6 +8,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Logo from '../../components/common/Logo';
 
 interface Campaign {
   id: number;
@@ -231,12 +232,12 @@ const CampaignsScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {t('campaigns.title') || 'Campaigns Management'}
-        </Text>
-        <TouchableOpacity onPress={handleAdd} style={styles.addButton}>
-          <MaterialCommunityIcons name="plus" size={24} color={theme.colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerBranding}>
+          <Logo width={32} height={32} color="#FFFFFF" animated={false} />
+          <Text style={styles.headerTitle}>
+            {t('campaigns.title') || 'Campaigns'}
+          </Text>
+        </View>
       </View>
 
       {/* Place Selector */}
@@ -346,6 +347,17 @@ const CampaignsScreen = () => {
             );
           })}
         </ScrollView>
+      )}
+
+      {/* Floating Action Button */}
+      {selectedPlaceId && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={handleAdd}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
       )}
 
       {/* Add/Edit Campaign Modal */}
@@ -525,22 +537,37 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.primary,
+  },
+  headerBranding: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
   },
   headerTitle: {
-    flex: 1,
     fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textLight,
-    textAlign: 'center',
+    color: '#FFFFFF',
   },
-  addButton: {
-    padding: theme.spacing.xs,
+  fab: {
+    position: 'absolute',
+    right: theme.spacing.md,
+    bottom: theme.spacing.md,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   placeSelectorContainer: {
     paddingHorizontal: theme.spacing.md,

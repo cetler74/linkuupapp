@@ -264,13 +264,20 @@ api.interceptors.response.use(
     // Check if it's a network error (no response object)
     const isNetworkError = !error.response && (error.message === 'Network Error' || error.code === 'NETWORK_ERROR' || error.message?.includes('Network'));
     
+    // Suppress 404 errors for endpoints that may not exist yet (handled gracefully)
+    const isRewardsSettings404 = error.response?.status === 404 && error.config?.url?.includes('/owner/rewards/places') && error.config?.url?.includes('/settings');
+    const isTimeOff404 = error.response?.status === 404 && error.config?.url?.includes('/owner/time-off');
+    
     if (isNetworkError) {
       console.warn('⚠️ Network error:', error.config?.url || 'unknown endpoint');
       console.warn('Network error details:', error.message);
       // Don't log as error - network issues are temporary
-    } else {
-      console.error('API error:', error.response?.status, error.response?.statusText, error.config?.url);
-      console.error('Error details:', error.message);
+    } else if (!isRewardsSettings404 && !isTimeOff404) {
+      console.error('🔴 ERROR: API error:', error.response?.status, error.response?.statusText, error.config?.url);
+      console.error('🔴 ERROR: Error details:', error.message);
+    } else if (isTimeOff404) {
+      // Log time-off 404s as warnings since they're handled gracefully with fallbacks
+      console.warn('⚠️ Time-off endpoint not available:', error.config?.url, '- using fallback');
     }
     
     // Redirect to Billing on payment required (React Native navigation)
@@ -738,7 +745,35 @@ export const ownerAPI = {
       if (isJson && responseText) {
         try {
           const errorData = JSON.parse(responseText);
-          errorMessage = errorData.detail || errorData.message || errorData.error || errorMessage;
+          // Try multiple possible error message fields
+          if (errorData.detail) {
+            // FastAPI format: single detail string or array of validation errors
+            if (typeof errorData.detail === 'string') {
+              errorMessage = errorData.detail;
+            } else if (Array.isArray(errorData.detail)) {
+              // Validation errors array
+              const details = errorData.detail.map((err: any) => {
+                if (typeof err === 'string') return err;
+                if (err.msg) return err.msg;
+                if (err.loc && err.msg) return `${err.loc.join('.')}: ${err.msg}`;
+                return JSON.stringify(err);
+              }).filter(Boolean);
+              errorMessage = details.length > 0 ? details.join(', ') : errorMessage;
+            }
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          } else if (Array.isArray(errorData)) {
+            // Array of validation errors
+            const details = errorData.map((err: any) => {
+              if (typeof err === 'string') return err;
+              if (err.msg) return err.msg;
+              if (err.loc && err.msg) return `${err.loc.join('.')}: ${err.msg}`;
+              return JSON.stringify(err);
+            }).filter(Boolean);
+            errorMessage = details.length > 0 ? details.join(', ') : errorMessage;
+          }
         } catch (e) {
           // If JSON parsing fails, use the text as is
           errorMessage = responseText || errorMessage;
@@ -749,9 +784,14 @@ export const ownerAPI = {
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
       
+      // Include response data in error for better debugging
       const error = new Error(errorMessage);
       (error as any).status = response.status;
-      (error as any).response = { status: response.status, statusText: response.statusText };
+      (error as any).response = { 
+        status: response.status, 
+        statusText: response.statusText,
+        data: responseText // Include response text for debugging
+      };
       throw error;
     }
     
@@ -794,7 +834,52 @@ export const ownerAPI = {
   },
   // Customers Management
   getPlaceCustomers: async (placeId: number): Promise<any[]> => {
-    const response = await api.get(`/owner/customers/places/${placeId}/customers`);
+    const response = await api.get(`/owner/places/${placeId}/customers`);
+    return response.data;
+  },
+  createCustomer: async (placeId: number, customerData: any): Promise<any> => {
+    const response = await api.post(`/owner/places/${placeId}/customers`, customerData);
+    return response.data;
+  },
+  getCustomerDetails: async (placeId: number, userId: number): Promise<any> => {
+    const response = await api.get(`/owner/places/${placeId}/customers/${userId}`);
+    return response.data;
+  },
+  importCustomersFromCSV: async (placeId: number, csvFile: FormData): Promise<any> => {
+    const token = await storage.getItem('auth_token');
+    const url = `${API_BASE_URL}/owner/places/${placeId}/customers/import-csv`;
+    
+    const headers: HeadersInit = {
+      'Accept': 'application/json',
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: csvFile,
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to import customers');
+    }
+    
+    return await response.json();
+  },
+  syncCustomerData: async (placeId: number): Promise<any> => {
+    const response = await api.post(`/owner/places/${placeId}/customers/sync`);
+    return response.data;
+  },
+  adjustCustomerRewards: async (placeId: number, userId: number, rewardsData: { points?: number; adjustment_reason?: string }): Promise<any> => {
+    const response = await api.put(`/owner/places/${placeId}/customers/${userId}/rewards`, rewardsData);
+    return response.data;
+  },
+  getCustomerRewardHistory: async (placeId: number, userId: number): Promise<any[]> => {
+    const response = await api.get(`/owner/places/${placeId}/customers/${userId}/reward-history`);
     return response.data;
   },
   // Notifications
@@ -824,8 +909,29 @@ export const ownerAPI = {
     return response.data;
   },
   getPlaceCampaigns: async (placeId: number): Promise<any[]> => {
-    const response = await api.get(`/campaigns/places/${placeId}/campaigns`);
-    return response.data;
+    try {
+      // Try owner-specific endpoint first
+      const response = await api.get(`/owner/campaigns/places/${placeId}/campaigns`);
+      return response.data;
+    } catch (error: any) {
+      // Fallback: try the general campaigns endpoint with place_id filter
+      if (error.response?.status === 404) {
+        try {
+          const response = await api.get(`/campaigns?place_id=${placeId}`);
+          // Handle different response formats
+          if (Array.isArray(response.data)) {
+            return response.data;
+          } else if (response.data.campaigns && Array.isArray(response.data.campaigns)) {
+            return response.data.campaigns;
+          }
+          return [];
+        } catch (fallbackError) {
+          console.error('Error fetching campaigns with fallback:', fallbackError);
+          return [];
+        }
+      }
+      throw error;
+    }
   },
   createCampaign: async (data: any): Promise<any> => {
     const response = await api.post('/campaigns', data);
@@ -845,8 +951,17 @@ export const ownerAPI = {
   },
   // Rewards
   getRewardSettings: async (placeId: number): Promise<any> => {
-    const response = await api.get(`/owner/rewards/places/${placeId}/settings`);
-    return response.data;
+    try {
+      const response = await api.get(`/owner/rewards/places/${placeId}/settings`);
+      return response.data;
+    } catch (error: any) {
+      // If endpoint doesn't exist (404), return null to use default values
+      if (error.response?.status === 404) {
+        console.log('Reward settings endpoint not found, using default values');
+        return null;
+      }
+      throw error;
+    }
   },
   updateRewardSettings: async (placeId: number, data: any): Promise<any> => {
     const response = await api.put(`/owner/rewards/places/${placeId}/settings`, data);
@@ -854,12 +969,86 @@ export const ownerAPI = {
   },
   // Time Off
   getPlaceTimeOff: async (placeId: number): Promise<any[]> => {
-    const response = await api.get(`/owner/time-off/places/${placeId}/time-off`);
-    return response.data;
+    // Try multiple endpoint patterns
+    const endpointsToTry = [
+      `/owner/time-off/places/${placeId}/time-off`,
+      `/owner/time-off?place_id=${placeId}`,
+      `/owner/time-off`,
+    ];
+
+    for (const endpoint of endpointsToTry) {
+      try {
+        const response = await api.get(endpoint);
+        const allTimeOff = Array.isArray(response.data) ? response.data : 
+                          (response.data?.time_off || response.data?.time_offs || response.data?.data || []);
+        
+        // Filter by place_id if endpoint doesn't include it
+        if (!endpoint.includes(`places/${placeId}`) && !endpoint.includes(`place_id=${placeId}`)) {
+          return allTimeOff.filter((item: any) => item.place_id === placeId);
+        }
+        
+        return allTimeOff;
+      } catch (error: any) {
+        // If this is the last endpoint, return empty array
+        if (endpoint === endpointsToTry[endpointsToTry.length - 1]) {
+          console.warn('All time-off endpoints failed, returning empty array');
+          return [];
+        }
+        // Otherwise, try the next endpoint
+        continue;
+      }
+    }
+    
+    return [];
   },
   getPlaceTimeOffCalendar: async (placeId: number, startDate: string, endDate: string): Promise<any[]> => {
-    const response = await api.get(`/owner/time-off/places/${placeId}/calendar?start_date=${startDate}&end_date=${endDate}`);
-    return response.data;
+    // Try multiple endpoint patterns since the API structure may vary
+    const endpointsToTry = [
+      `/owner/time-off/places/${placeId}/calendar?start_date=${startDate}&end_date=${endDate}`,
+      `/owner/time-off/places/${placeId}/time-off`,
+      `/owner/time-off?place_id=${placeId}`,
+      `/owner/time-off`,
+    ];
+
+    for (const endpoint of endpointsToTry) {
+      try {
+        const response = await api.get(endpoint);
+        const allTimeOff = Array.isArray(response.data) ? response.data : 
+                          (response.data?.time_off || response.data?.time_offs || response.data?.data || []);
+        
+        // Filter by date range if needed (for endpoints that don't support date filtering)
+        if (!endpoint.includes('calendar')) {
+          const filtered = allTimeOff.filter((item: any) => {
+            if (!item.start_date) return false;
+            const itemStart = new Date(item.start_date);
+            const itemEnd = new Date(item.end_date || item.start_date);
+            const filterStart = new Date(startDate);
+            const filterEnd = new Date(endDate);
+            // Check if time-off overlaps with the requested date range
+            return (itemStart <= filterEnd && itemEnd >= filterStart);
+          });
+          
+          // Also filter by place_id if endpoint doesn't include it
+          if (!endpoint.includes(`places/${placeId}`) && !endpoint.includes(`place_id=${placeId}`)) {
+            return filtered.filter((item: any) => item.place_id === placeId);
+          }
+          
+          return filtered;
+        }
+        
+        return allTimeOff;
+      } catch (error: any) {
+        // If this is the last endpoint, return empty array
+        if (endpoint === endpointsToTry[endpointsToTry.length - 1]) {
+          console.warn('All time-off endpoints failed, returning empty array');
+          return [];
+        }
+        // Otherwise, try the next endpoint
+        continue;
+      }
+    }
+    
+    return [];
   },
   createTimeOff: async (placeId: number, employeeId: number, data: any): Promise<any> => {
     const response = await api.post(`/owner/time-off/places/${placeId}/employees/${employeeId}/time-off`, data);

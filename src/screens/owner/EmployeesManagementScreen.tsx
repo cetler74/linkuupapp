@@ -9,6 +9,7 @@ import Button from '../../components/ui/Button';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { getImageUrl } from '../../api/api';
+import Logo from '../../components/common/Logo';
 
 const EmployeesManagementScreen = () => {
   const { t } = useTranslation();
@@ -135,15 +136,12 @@ const EmployeesManagementScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color={theme.colors.textLight} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {t('employees.manageEmployees') || 'Manage Employees'}
-        </Text>
-        <TouchableOpacity onPress={handleAdd} style={styles.addButton}>
-          <MaterialCommunityIcons name="plus" size={24} color={theme.colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerBranding}>
+          <Logo width={32} height={32} color="#FFFFFF" animated={false} />
+          <Text style={styles.headerTitle}>
+            {t('employees.manageEmployees') || 'Employees'}
+          </Text>
+        </View>
       </View>
 
       {/* Place Selector */}
@@ -267,9 +265,18 @@ const EmployeesManagementScreen = () => {
                 </TouchableOpacity>
               </Card>
             );
-          })}
+          }          )}
         </ScrollView>
       )}
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={handleAdd}
+        activeOpacity={0.8}
+      >
+        <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
     </View>
   );
 };
@@ -282,25 +289,37 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.primary,
   },
-  backButton: {
-    padding: theme.spacing.xs,
+  headerBranding: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
   },
   headerTitle: {
-    flex: 1,
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textLight,
-    textAlign: 'center',
+    fontWeight: theme.typography.fontWeight.bold as '700',
+    color: '#FFFFFF',
   },
-  addButton: {
-    padding: theme.spacing.xs,
+  fab: {
+    position: 'absolute',
+    right: theme.spacing.md,
+    bottom: theme.spacing.md,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   placeSelectorContainer: {
     paddingHorizontal: theme.spacing.md,

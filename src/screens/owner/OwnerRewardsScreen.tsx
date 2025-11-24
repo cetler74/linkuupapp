@@ -9,6 +9,7 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import ToggleSwitch from '../../components/ui/ToggleSwitch';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Logo from '../../components/common/Logo';
 
 interface RewardsConfig {
   calculation_method: 'volume_based' | 'fixed_per_booking';
@@ -88,8 +89,13 @@ const OwnerRewardsScreen = () => {
           },
         });
       }
-    } catch (error) {
-      console.error('Error fetching reward settings:', error);
+      // If response is null (404), keep default values already set in state
+    } catch (error: any) {
+      // Only log non-404 errors
+      if (error.response?.status !== 404) {
+        console.error('Error fetching reward settings:', error);
+      }
+      // Keep default values on error
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -126,9 +132,12 @@ const OwnerRewardsScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {t('rewards.title') || 'Rewards Management'}
-        </Text>
+        <View style={styles.headerBranding}>
+          <Logo width={32} height={32} color="#FFFFFF" animated={false} />
+          <Text style={styles.headerTitle}>
+            {t('rewards.title') || 'Rewards'}
+          </Text>
+        </View>
       </View>
 
       {/* Place Selector */}
@@ -213,12 +222,6 @@ const OwnerRewardsScreen = () => {
               </View>
             </View>
 
-            <Button
-              title={t('rewards.configureRewards') || 'Configure Rewards'}
-              onPress={() => setShowConfigModal(true)}
-              variant="primary"
-              style={styles.configButton}
-            />
           </Card>
 
           {/* Current Settings Summary */}
@@ -264,6 +267,17 @@ const OwnerRewardsScreen = () => {
             )}
           </Card>
         </ScrollView>
+      )}
+
+      {/* Floating Action Button */}
+      {selectedPlaceId && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => setShowConfigModal(true)}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
       )}
 
       {/* Configuration Modal */}
@@ -442,17 +456,39 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.backgroundLight,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.primary,
+  },
+  headerBranding: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
   },
   headerTitle: {
-    fontSize: theme.typography.fontSize['2xl'],
+    fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textLight,
-    textAlign: 'center',
+    color: '#FFFFFF',
+  },
+  fab: {
+    position: 'absolute',
+    right: theme.spacing.md,
+    bottom: theme.spacing.md,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   placeSelectorContainer: {
     paddingHorizontal: theme.spacing.md,
@@ -528,10 +564,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.textLight,
     marginLeft: theme.spacing.sm,
-  },
-  configButton: {
-    width: '100%',
-    maxWidth: 300,
   },
   settingsCard: {
     padding: theme.spacing.md,

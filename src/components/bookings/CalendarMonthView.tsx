@@ -12,6 +12,7 @@ interface CalendarMonthViewProps {
   bookings: Booking[];
   employees?: Map<number, PlaceEmployee>;
   selectedDate: string;
+  selectedEmployeeIds?: Set<number>;
   onDateSelect: (date: string) => void;
   onAccept: (id: number) => void;
   onDecline: (id: number) => void;
@@ -23,6 +24,7 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   bookings,
   employees,
   selectedDate,
+  selectedEmployeeIds,
   onDateSelect,
   onAccept,
   onDecline,
@@ -51,20 +53,29 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
         };
       }
 
+      // Use employee color if available, otherwise use status color
       let dotColor = theme.colors.placeholderLight;
-      switch (booking.status) {
-        case 'pending':
-          dotColor = '#f59e0b';
-          break;
-        case 'confirmed':
-          dotColor = '#10b981';
-          break;
-        case 'cancelled':
-          dotColor = '#ef4444';
-          break;
-        case 'completed':
-          dotColor = '#6b7280';
-          break;
+      const employee = booking.employee_id ? employees?.get(booking.employee_id) : undefined;
+      
+      if (employee?.color_code && selectedEmployeeIds && selectedEmployeeIds.size > 1) {
+        // When comparing multiple employees, use their color codes
+        dotColor = employee.color_code;
+      } else {
+        // Otherwise use status color
+        switch (booking.status) {
+          case 'pending':
+            dotColor = '#f59e0b';
+            break;
+          case 'confirmed':
+            dotColor = '#10b981';
+            break;
+          case 'cancelled':
+            dotColor = '#ef4444';
+            break;
+          case 'completed':
+            dotColor = '#6b7280';
+            break;
+        }
       }
 
       if (!marked[date].dots) {
@@ -77,7 +88,7 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
     });
 
     return marked;
-  }, [bookings, selectedDate]);
+  }, [bookings, selectedDate, employees, selectedEmployeeIds]);
 
   const selectedDateBookings = useMemo(() => {
     return bookings.filter((booking) => booking.booking_date === selectedDate);
@@ -88,43 +99,66 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   };
 
   return (
-    <View style={styles.container}>
-      <Calendar
-        onDayPress={handleDayPress}
-        markedDates={markedDates}
-        markingType="multi-dot"
-        theme={{
-          todayTextColor: theme.colors.primary,
-          arrowColor: theme.colors.primary,
-          selectedDayBackgroundColor: theme.colors.primary,
-          selectedDayTextColor: '#FFFFFF',
-          textDayFontWeight: '500',
-          textMonthFontWeight: 'bold',
-          textDayHeaderFontWeight: '600',
-        }}
-        style={styles.calendar}
-      />
-
-      <View style={styles.legend}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#f59e0b' }]} />
-          <Text style={styles.legendText}>{t('bookings.pending') || 'Pending'}</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
-          <Text style={styles.legendText}>{t('bookings.confirmed') || 'Confirmed'}</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
-          <Text style={styles.legendText}>{t('bookings.cancelled') || 'Cancelled'}</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#6b7280' }]} />
-          <Text style={styles.legendText}>{t('bookings.completed') || 'Completed'}</Text>
-        </View>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={true}
+    >
+      <View style={styles.calendarWrapper}>
+        <Calendar
+          onDayPress={handleDayPress}
+          markedDates={markedDates}
+          markingType="multi-dot"
+          enableSwipeMonths={false}
+          theme={{
+            todayTextColor: theme.colors.primary,
+            arrowColor: theme.colors.primary,
+            selectedDayBackgroundColor: theme.colors.primary,
+            selectedDayTextColor: '#FFFFFF',
+            textDayFontWeight: '500',
+            textMonthFontWeight: 'bold',
+            textDayHeaderFontWeight: '600',
+          }}
+          style={styles.calendar}
+        />
       </View>
 
-      <ScrollView style={styles.bookingsList} contentContainerStyle={styles.bookingsListContent}>
+      {selectedEmployeeIds && selectedEmployeeIds.size > 1 ? (
+        <View style={styles.legend}>
+          {Array.from(selectedEmployeeIds).map((employeeId) => {
+            const employee = employees?.get(employeeId);
+            if (!employee) return null;
+            const employeeColor = employee.color_code || theme.colors.primary;
+            return (
+              <View key={employeeId} style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: employeeColor }]} />
+                <Text style={styles.legendText}>{employee.name}</Text>
+              </View>
+            );
+          })}
+        </View>
+      ) : (
+        <View style={styles.legend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#f59e0b' }]} />
+            <Text style={styles.legendText}>{t('bookings.pending') || 'Pending'}</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
+            <Text style={styles.legendText}>{t('bookings.confirmed') || 'Confirmed'}</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
+            <Text style={styles.legendText}>{t('bookings.cancelled') || 'Cancelled'}</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#6b7280' }]} />
+            <Text style={styles.legendText}>{t('bookings.completed') || 'Completed'}</Text>
+          </View>
+        </View>
+      )}
+
+      <View style={styles.bookingsList}>
         {selectedDateBookings.length === 0 ? (
           <View style={styles.emptyContainer}>
             <MaterialCommunityIcons
@@ -153,7 +187,7 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
             />
           ))
         )}
-      </ScrollView>
+      </View>
 
       {/* Booking Detail Modal */}
           <BookingDetailModal
@@ -177,7 +211,7 @@ const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
             }}
             getStatusColor={getStatusColor}
           />
-    </View>
+    </ScrollView>
   );
 };
 
@@ -185,9 +219,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  calendar: {
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: theme.spacing.xl,
+  },
+  calendarWrapper: {
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderLight,
+  },
+  calendar: {
     paddingBottom: theme.spacing.md,
   },
   legend: {
@@ -214,9 +254,6 @@ const styles = StyleSheet.create({
     color: theme.colors.placeholderLight,
   },
   bookingsList: {
-    flex: 1,
-  },
-  bookingsListContent: {
     padding: theme.spacing.md,
   },
   emptyContainer: {

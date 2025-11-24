@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, TextInput } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { ownerAPI, type Place } from '../../api/api';
 import { theme } from '../../theme/theme';
@@ -8,15 +8,25 @@ import Card from '../../components/ui/Card';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { getImageUrl } from '../../api/api';
+import Logo from '../../components/common/Logo';
 
 interface Customer {
-  id: number;
-  name: string;
+  id?: number;
+  user_id?: number;
+  first_name?: string;
+  last_name?: string;
+  name?: string; // Fallback for full name
   email: string;
   phone?: string;
-  total_bookings: number;
+  total_bookings?: number;
   last_booking_date?: string;
   total_spent?: number;
+  rewards_points?: number;
+  created_at?: string;
+  updated_at?: string;
+  is_active?: boolean;
+  gdpr_data_processing_consent?: boolean;
+  gdpr_marketing_consent?: boolean;
 }
 
 const CustomersScreen = () => {
@@ -39,6 +49,15 @@ const CustomersScreen = () => {
       fetchCustomers();
     }
   }, [selectedPlaceId]);
+
+  // Refresh customers when screen comes into focus (e.g., after adding a customer)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (selectedPlaceId) {
+        fetchCustomers();
+      }
+    }, [selectedPlaceId])
+  );
 
   useEffect(() => {
     filterCustomers();
@@ -81,12 +100,33 @@ const CustomersScreen = () => {
     }
 
     const query = searchQuery.toLowerCase();
-    const filtered = customers.filter(customer =>
-      customer.name.toLowerCase().includes(query) ||
-      customer.email.toLowerCase().includes(query) ||
-      customer.phone?.toLowerCase().includes(query)
-    );
+    const filtered = customers.filter(customer => {
+      const fullName = customer.name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+      return (
+        fullName.toLowerCase().includes(query) ||
+        customer.email.toLowerCase().includes(query) ||
+        customer.phone?.toLowerCase().includes(query) ||
+        customer.first_name?.toLowerCase().includes(query) ||
+        customer.last_name?.toLowerCase().includes(query)
+      );
+    });
     setFilteredCustomers(filtered);
+  };
+
+  const getCustomerDisplayName = (customer: Customer): string => {
+    if (customer.name) return customer.name;
+    if (customer.first_name || customer.last_name) {
+      return `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+    }
+    return customer.email;
+  };
+
+  const getCustomerInitials = (customer: Customer): string => {
+    const name = getCustomerDisplayName(customer);
+    if (name && name.length > 0) {
+      return name[0].toUpperCase();
+    }
+    return customer.email[0].toUpperCase();
   };
 
   const handleRefresh = () => {
@@ -95,16 +135,29 @@ const CustomersScreen = () => {
   };
 
   const handleCustomerPress = (customer: Customer) => {
-    navigation.navigate('CustomerDetails' as never, { customerId: customer.id } as never);
+    const customerId = customer.user_id || customer.id;
+    if (!customerId || !selectedPlaceId) return;
+    navigation.navigate('CustomerDetails' as never, { 
+      customerId: customerId,
+      placeId: selectedPlaceId 
+    } as never);
+  };
+
+  const handleAddCustomer = () => {
+    if (!selectedPlaceId) return;
+    navigation.navigate('AddCustomer' as never, { placeId: selectedPlaceId } as never);
   };
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {t('customers.manageCustomers') || 'Manage Customers'}
-        </Text>
+        <View style={styles.headerBranding}>
+          <Logo width={32} height={32} color="#FFFFFF" animated={false} />
+          <Text style={styles.headerTitle}>
+            {t('customers.manageCustomers') || 'Customers'}
+          </Text>
+        </View>
       </View>
 
       {/* Place Selector */}
@@ -201,11 +254,11 @@ const CustomersScreen = () => {
                 <View style={styles.customerHeader}>
                   <View style={styles.customerAvatar}>
                     <Text style={styles.customerInitials}>
-                      {customer.name[0].toUpperCase()}
+                      {getCustomerInitials(customer)}
                     </Text>
                   </View>
                   <View style={styles.customerInfo}>
-                    <Text style={styles.customerName}>{customer.name}</Text>
+                    <Text style={styles.customerName}>{getCustomerDisplayName(customer)}</Text>
                     <Text style={styles.customerEmail}>{customer.email}</Text>
                     {customer.phone && (
                       <Text style={styles.customerPhone}>{customer.phone}</Text>
@@ -218,17 +271,27 @@ const CustomersScreen = () => {
                   />
                 </View>
                 <View style={styles.customerStats}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statValue}>{customer.total_bookings}</Text>
-                    <Text style={styles.statLabel}>
-                      {t('customers.bookings') || 'Bookings'}
-                    </Text>
-                  </View>
-                  {customer.total_spent !== undefined && (
+                  {customer.total_bookings !== undefined && (
+                    <View style={styles.statItem}>
+                      <Text style={styles.statValue}>{customer.total_bookings}</Text>
+                      <Text style={styles.statLabel}>
+                        {t('customers.bookings') || 'Bookings'}
+                      </Text>
+                    </View>
+                  )}
+                  {customer.total_spent !== undefined && customer.total_spent !== null && (
                     <View style={styles.statItem}>
                       <Text style={styles.statValue}>€{customer.total_spent.toFixed(2)}</Text>
                       <Text style={styles.statLabel}>
                         {t('customers.totalSpent') || 'Total Spent'}
+                      </Text>
+                    </View>
+                  )}
+                  {customer.rewards_points !== undefined && customer.rewards_points !== null && (
+                    <View style={styles.statItem}>
+                      <Text style={styles.statValue}>{customer.rewards_points}</Text>
+                      <Text style={styles.statLabel}>
+                        {t('customers.rewardsPoints') || 'Rewards Points'}
                       </Text>
                     </View>
                   )}
@@ -251,6 +314,17 @@ const CustomersScreen = () => {
           ))}
         </ScrollView>
       )}
+
+      {/* Floating Action Button */}
+      {selectedPlaceId && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={handleAddCustomer}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -261,17 +335,23 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.backgroundLight,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.primary,
+  },
+  headerBranding: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
   },
   headerTitle: {
     fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textLight,
-    textAlign: 'center',
+    color: '#FFFFFF',
   },
   placeSelector: {
     maxHeight: 60,
@@ -413,6 +493,22 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.placeholderLight,
     textAlign: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    right: theme.spacing.md,
+    bottom: theme.spacing.md,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
 });
 

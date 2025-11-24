@@ -16,6 +16,7 @@ interface CalendarWeekViewProps {
   bookings: Booking[];
   employees?: Map<number, PlaceEmployee>;
   selectedDate: string;
+  selectedEmployeeIds?: Set<number>;
   onDateSelect: (date: string) => void;
   onBookingPress?: (booking: Booking) => void;
   onAccept: (id: number) => void;
@@ -28,6 +29,7 @@ const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   bookings,
   employees,
   selectedDate,
+  selectedEmployeeIds,
   onDateSelect,
   onBookingPress,
   onAccept,
@@ -167,6 +169,14 @@ const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                     const employeePhotoUrl = employee?.photo_url ? getImageUrl(employee.photo_url) : null;
                     const employeeColor = employee?.color_code || theme.colors.primary;
                     const statusColor = getStatusColor(booking.status);
+                    
+                    // Use employee color when comparing multiple employees, otherwise use status color
+                    const borderColor = selectedEmployeeIds && selectedEmployeeIds.size > 1 
+                      ? employeeColor 
+                      : statusColor;
+                    const backgroundColor = selectedEmployeeIds && selectedEmployeeIds.size > 1
+                      ? employeeColor + '20'
+                      : statusColor + '20';
 
                     return (
                       <TouchableOpacity
@@ -176,8 +186,8 @@ const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                           {
                             top,
                             height: Math.max(height, 40),
-                            backgroundColor: statusColor + '20',
-                            borderLeftColor: statusColor,
+                            backgroundColor,
+                            borderLeftColor: borderColor,
                           },
                         ]}
                         onPress={() => {
