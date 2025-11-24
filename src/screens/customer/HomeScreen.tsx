@@ -8,6 +8,7 @@ import SearchBar from '../../components/common/SearchBar';
 import PlaceCard from '../../components/common/PlaceCard';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
+import Logo from '../../components/common/Logo';
 
 const HomeScreen = () => {
   const { t } = useTranslation();
@@ -88,8 +89,12 @@ const HomeScreen = () => {
     >
       {/* Header Section */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>LinkUup</Text>
-        <Text style={styles.headerSubtitle}>{t('home.welcome') || 'Welcome!'}</Text>
+        <View style={styles.headerBranding}>
+          <Logo width={32} height={32} color="#FFFFFF" animated={false} />
+          <Text style={styles.headerTitle}>
+            {t('nav.home') || 'Home'}
+          </Text>
+        </View>
       </View>
 
       {/* Search Bar */}
@@ -221,21 +226,23 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.backgroundLight,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
     backgroundColor: theme.colors.primary,
   },
+  headerBranding: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
   headerTitle: {
-    fontSize: theme.typography.fontSize['2xl'],
+    fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
     color: '#FFFFFF',
-    marginBottom: theme.spacing.xs,
-  },
-  headerSubtitle: {
-    fontSize: theme.typography.fontSize.base,
-    color: '#FFFFFF',
-    opacity: 0.9,
   },
   heroSection: {
     paddingHorizontal: theme.spacing.md,

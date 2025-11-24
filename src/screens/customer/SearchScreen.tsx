@@ -7,6 +7,7 @@ import { theme } from '../../theme/theme';
 import SearchBar from '../../components/common/SearchBar';
 import PlaceCard from '../../components/common/PlaceCard';
 import Card from '../../components/ui/Card';
+import Logo from '../../components/common/Logo';
 
 const SearchScreen = () => {
   const { t } = useTranslation();
@@ -79,11 +80,10 @@ const SearchScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('nav.search') || 'Explore'}</Text>
-        <View style={styles.headerRight} />
+        <View style={styles.headerBranding}>
+          <Logo width={32} height={32} color="#FFFFFF" animated={false} />
+          <Text style={styles.headerTitle}>{t('nav.search') || 'Search'}</Text>
+        </View>
       </View>
 
       {/* Search Bar */}
@@ -173,30 +173,21 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.sm,
+    paddingBottom: theme.spacing.md,
+    backgroundColor: theme.colors.primary,
   },
-  backButton: {
-    width: 40,
-    height: 40,
+  headerBranding: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backButtonText: {
-    fontSize: theme.typography.fontSize['2xl'],
-    color: theme.colors.textLight,
+    gap: theme.spacing.sm,
   },
   headerTitle: {
-    flex: 1,
     fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textLight,
-    textAlign: 'center',
-  },
-  headerRight: {
-    width: 40,
+    color: '#FFFFFF',
   },
   filtersContainer: {
     paddingVertical: theme.spacing.sm,

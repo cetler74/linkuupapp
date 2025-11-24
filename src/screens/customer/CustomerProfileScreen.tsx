@@ -5,6 +5,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { theme } from '../../theme/theme';
 import Button from '../../components/ui/Button';
+import Logo from '../../components/common/Logo';
+import { useTranslation } from 'react-i18next';
 
 interface SettingItemProps {
   icon: string;
@@ -36,6 +38,7 @@ const SettingItem: React.FC<SettingItemProps> = ({ icon, title, subtitle, onPres
 const CustomerProfileScreen = () => {
   const { user, logout } = useAuth();
   const navigation = useNavigation();
+  const { t } = useTranslation();
 
   const handleLogout = () => {
     Alert.alert(
@@ -98,7 +101,12 @@ const CustomerProfileScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Profile</Text>
+        <View style={styles.headerBranding}>
+          <Logo width={32} height={32} color="#FFFFFF" animated={false} />
+          <Text style={styles.headerTitle}>
+            {t('nav.profile') || 'Profile'}
+          </Text>
+        </View>
       </View>
 
       <ScrollView 
@@ -195,16 +203,23 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.backgroundLight,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.primary,
+  },
+  headerBranding: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
   },
   headerTitle: {
-    fontSize: theme.typography.fontSize['2xl'],
+    fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textLight,
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   scrollView: {
