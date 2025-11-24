@@ -311,7 +311,7 @@ const EditPlaceScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color={theme.colors.textLight} />
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
           {t('places.editPlace') || 'Edit Place'}
@@ -321,7 +321,7 @@ const EditPlaceScreen = () => {
 
       <View style={styles.content}>
         <Card style={styles.formCard}>
-          <Text style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, styles.firstSectionTitle]}>
             {t('owner.dashboard.basicInformation') || 'Basic Information'}
           </Text>
 
@@ -576,10 +576,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
-    backgroundColor: theme.colors.backgroundLight,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
+    paddingBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.primary,
   },
   backButton: {
     width: 40,
@@ -591,25 +589,32 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textLight,
-    textAlign: 'center',
-    marginHorizontal: theme.spacing.sm,
+    color: '#FFFFFF',
+    textAlign: 'left',
+    textAlignVertical: 'center',
+    marginLeft: theme.spacing.sm,
+    includeFontPadding: false,
   },
   headerRight: {
     width: 40,
   },
   content: {
     padding: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
   },
   formCard: {
     padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
   },
   sectionTitle: {
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.textLight,
-    marginTop: theme.spacing.md,
+    marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
+  },
+  firstSectionTitle: {
+    marginTop: 0,
   },
   input: {
     marginBottom: theme.spacing.md,

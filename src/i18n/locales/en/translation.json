@@ -277,7 +277,16 @@
     "selectedServices": "Selected Services",
     "totalDuration": "Total Duration",
     "blocked": "Blocked",
-    "reschedule": "Reschedule"
+    "reschedule": "Reschedule",
+    "selectDateTime": "Select Date & Time",
+    "availableTimes": "Available Times",
+    "errorCreating": "Error creating booking",
+    "searchServices": "Search for a service",
+    "services": "services",
+    "selectProfessional": "Select a Professional",
+    "noPreference": "No Preference",
+    "assignNextAvailable": "Assign the next available professional",
+    "noAvailableSlots": "No available time slots for this date"
   },
   "bookings": {
     "myBookings": "My Bookings",
@@ -1200,6 +1209,47 @@
       "error": "Failed to send message. Please try again."
     }
   },
+  "billing": {
+    "title": "Billing & Subscription",
+    "currentSubscription": "Current Subscription",
+    "availablePlans": "Available Plans",
+    "noSubscription": "No active subscription",
+    "trialActive": "Trial period active",
+    "employeeLimit": "Employee limit: {{limit}}",
+    "upToEmployees": "Up to {{count}} employees",
+    "perMonth": "/month",
+    "perYear": "/year",
+    "monthly": "per month",
+    "annual": "per year",
+    "trialDays": "{{days}}-day free trial",
+    "paymentRequired": "Payment required",
+    "selectPlan": "Select a Plan",
+    "choosePlan": "Choose the perfect plan for your business",
+    "upgrade": "Upgrade",
+    "select": "Select Plan",
+    "manageSubscription": "Manage Subscription",
+    "success": "Success",
+    "planChanged": "Plan changed successfully",
+    "changePlanError": "Failed to change plan",
+    "checkoutError": "Failed to create checkout session",
+    "portalError": "Failed to open billing portal",
+    "fetchError": "Failed to load billing information",
+    "fetchPlansError": "Failed to load plans",
+    "selectPlanFirst": "Please select a plan first",
+    "status": {
+      "trialing": "Trial",
+      "active": "Active",
+      "canceled": "Canceled",
+      "expired": "Expired",
+      "none": "No Subscription"
+    },
+    "upgradePrompt": {
+      "title": "Limit Reached",
+      "employeeLimit": "You've reached your employee limit ({{current}}/{{limit}}). Upgrade to Pro to add more employees.",
+      "limitReached": "You've reached your {{type}} limit ({{current}}/{{limit}}).",
+      "upgradeButton": "Upgrade to Pro"
+    }
+  },
   "gdpr": {
     "title": "Data Consent",
     "required": "Required",
@@ -1502,6 +1552,8 @@
       "noServicesAvailable": "No services available for this place",
       "noEmployees": "No Employees Yet",
       "addFirstEmployee": "Add your first employee to get started",
+      "count": "{{current}}/{{limit}} employees ({{plan}} plan)",
+      "selectPlaceFirst": "Please select a place first",
       "selectServices": "Select Services",
       "servicesSelected": "service(s) selected",
       "noServicesSelected": "No services selected",

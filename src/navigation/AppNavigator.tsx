@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -13,6 +13,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
+import PlanSelectionScreen from '../screens/auth/PlanSelectionScreen';
 
 import HomeScreen from '../screens/customer/HomeScreen';
 import SearchScreen from '../screens/customer/SearchScreen';
@@ -45,6 +46,7 @@ import CampaignsScreen from '../screens/owner/CampaignsScreen';
 import TimeOffScreen from '../screens/owner/TimeOffScreen';
 import MessagingScreen from '../screens/owner/MessagingScreen';
 import NotificationsScreen from '../screens/owner/NotificationsScreen';
+import BillingScreen from '../screens/owner/BillingScreen';
 import CustomTabBar from './CustomTabBar';
 
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
@@ -55,8 +57,9 @@ const Tab = createBottomTabNavigator();
 // Customer Tab Navigator
 const CustomerTabs = () => (
   <Tab.Navigator
+    tabBar={(props) => <CustomTabBar {...props} />}
     screenOptions={({ route }) => ({
-      tabBarIcon: ({ focused, color, size }) => {
+      tabBarIcon: ({ focused }) => {
         let iconName: any;
 
         if (route.name === 'Home') {
@@ -73,10 +76,9 @@ const CustomerTabs = () => (
           iconName = 'help-circle-outline';
         }
 
-        return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
+        return <MaterialCommunityIcons name={iconName} size={24} color={focused ? '#1E90FF' : '#333333'} />;
       },
-      tabBarActiveTintColor: '#1E90FF',
-      tabBarInactiveTintColor: '#333333',
+      tabBarLabel: route.name,
       headerShown: false,
     })}
   >
@@ -142,6 +144,19 @@ const OwnerTabs = () => (
 export const AppNavigator = () => {
   const { isAuthenticated, isAdmin, isBusinessOwner, isCustomer, loading } = useAuth();
 
+  // Reset navigation when authentication state changes
+  useEffect(() => {
+    if (!loading && navigationRef.isReady()) {
+      if (!isAuthenticated) {
+        // Reset to Welcome screen when logged out
+        navigationRef.reset({
+          index: 0,
+          routes: [{ name: 'Welcome' as never }],
+        });
+      }
+    }
+  }, [isAuthenticated, loading]);
+
   if (loading) {
     // Return loading screen
     return <LoadingScreen />;
@@ -161,6 +176,7 @@ export const AppNavigator = () => {
       <Stack.Navigator 
         screenOptions={{ headerShown: false }}
         initialRouteName={getInitialRouteName()}
+        key={isAuthenticated ? 'authenticated' : 'unauthenticated'}
       >
         {!isAuthenticated ? (
           // Auth Stack
@@ -168,6 +184,7 @@ export const AppNavigator = () => {
             <Stack.Screen name="Welcome" component={WelcomeScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="PlanSelection" component={PlanSelectionScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
           </>
@@ -189,6 +206,7 @@ export const AppNavigator = () => {
             <Stack.Screen name="EmployeeForm" component={EmployeeFormScreen} />
             <Stack.Screen name="EmployeeServiceSelection" component={EmployeeServiceSelectionScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="Billing" component={BillingScreen} />
           </>
         ) : (
           // Customer Stack

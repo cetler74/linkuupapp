@@ -7,11 +7,13 @@ import { placeAPI, bookingAPI, type AvailabilityResponse } from '../../api/api';
 import { scheduleBookingReminder } from '../../services/notifications';
 import { theme } from '../../theme/theme';
 import Button from '../../components/ui/Button';
+import { useAuth } from '../../contexts/AuthContext';
 
 const DateTimeSelectionScreen = () => {
   const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
+  const { user } = useAuth();
   const { placeId, placeName, selectedServices, selectedEmployee, totalPrice, totalDuration } = (route.params as any) || {};
   
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -68,14 +70,31 @@ const DateTimeSelectionScreen = () => {
       return;
     }
 
+    if (!user || !user.email || !user.name) {
+      alert(t('booking.error') || 'Please log in to create a booking');
+      return;
+    }
+
     try {
+      // Format booking_time as HH:MM:SS (just the time, not full datetime)
+      const bookingTime = `${selectedTime}:00`;
+      
+      // Use the first service if multiple services are selected
+      // The API currently supports single service per booking
+      const serviceId = Array.isArray(selectedServices) && selectedServices.length > 0 
+        ? selectedServices[0] 
+        : selectedServices;
+
       // Create booking
       const bookingData = {
         salon_id: placeId,
-        service_ids: selectedServices,
+        service_id: serviceId,
         booking_date: selectedDate,
-        booking_time: `${selectedDate}T${selectedTime}:00`,
+        booking_time: bookingTime,
         employee_id: selectedEmployee || 0,
+        customer_name: user.name,
+        customer_email: user.email,
+        customer_phone: user.phone || undefined,
         any_employee_selected: selectedEmployee === null,
       };
 

@@ -59,6 +59,9 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({ state, descriptors, navigat
             'TimeOff': 'Time Off',
             'Messaging': 'Messaging',
             'Settings': 'Settings',
+            'Home': 'Home',
+            'Search': 'Search',
+            'Profile': 'Profile',
           };
           
           const label = labelMap[route.name] || options.tabBarLabel || route.name;

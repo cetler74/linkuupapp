@@ -192,7 +192,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await storage.removeItem('auth_token');
     await storage.removeItem('refresh_token');
     setUser(null);
-    navigate('Welcome');
+    // Navigation will be handled automatically by AppNavigator when isAuthenticated becomes false
+    // No need to manually navigate as the stack will switch to auth stack which includes Welcome screen
   };
 
   const loginWithGoogle = async (userType: 'customer' | 'business_owner' | any = 'customer', planCode?: string, action: 'login' | 'register' = 'register') => {

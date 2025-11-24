@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,13 +17,8 @@ import { navigate } from '../../navigation/navigationService';
 import Logo from '../../components/common/Logo';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const PHONE_WIDTH = Math.min(280, SCREEN_WIDTH * 0.7);
+const PHONE_WIDTH = Math.min(280, SCREEN_WIDTH * 0.75);
 const PHONE_HEIGHT = PHONE_WIDTH * 2; // Maintain 2:1 aspect ratio
-
-// Debug: Log dimensions to verify they're calculated
-if (__DEV__) {
-  console.log('Phone Frame Dimensions:', { PHONE_WIDTH, PHONE_HEIGHT, SCREEN_WIDTH });
-}
 
 interface CarouselSlide {
   id: string;
@@ -33,16 +28,25 @@ interface CarouselSlide {
   icon?: string;
 }
 
-// Phone Frame Component
+// 3D Smartphone Render Component
 const PhoneFrame = ({ children }: { children: React.ReactNode }) => {
   return (
-    <View style={styles.phoneFrame}>
-      {/* Phone Bezel/Frame */}
+    <View style={styles.phone3DContainer}>
+      {/* Top Edge - Creates 3D depth */}
+      <View style={styles.phoneTopEdge} />
+      
+      {/* Main Phone Bezel with 3D effect */}
       <View style={styles.phoneBezel}>
+        {/* Left Edge Shadow */}
+        <View style={styles.phoneLeftEdge} />
+        
         {/* Screen Area - fills the bezel */}
         <View style={styles.phoneScreen}>
           {children}
         </View>
+        
+        {/* Right Edge Shadow */}
+        <View style={styles.phoneRightEdge} />
         
         {/* Notch/Status Bar Area - positioned absolutely at top */}
         <View style={styles.phoneNotch} />
@@ -50,12 +54,21 @@ const PhoneFrame = ({ children }: { children: React.ReactNode }) => {
         {/* Home Indicator - positioned absolutely at bottom */}
         <View style={styles.homeIndicator} />
       </View>
+      
+      {/* Bottom Edge - Creates 3D depth */}
+      <View style={styles.phoneBottomEdge} />
     </View>
   );
 };
 
-// Separate component for carousel item with video
-const CarouselItem = ({ item, index, isActive }: { item: CarouselSlide; index: number; isActive: boolean }) => {
+// Video Photo Component - Individual photo thrown on table
+const VideoPhoto = ({ video, index, isActive, rotation, position }: { 
+  video: any; 
+  index: number; 
+  isActive: boolean;
+  rotation: number;
+  position: { x: number; y: number };
+}) => {
   const videoRef = useRef<Video>(null);
 
   useEffect(() => {
@@ -69,12 +82,10 @@ const CarouselItem = ({ item, index, isActive }: { item: CarouselSlide; index: n
 
   const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
     if (status.isLoaded) {
-      // Limit video playback to 2 seconds max, then loop
       if (status.positionMillis && status.positionMillis >= 2000) {
         videoRef.current?.setPositionAsync(0);
         videoRef.current?.playAsync();
       }
-      // Loop when video finishes
       if (status.didJustFinish) {
         videoRef.current?.setPositionAsync(0);
         videoRef.current?.playAsync();
@@ -83,12 +94,22 @@ const CarouselItem = ({ item, index, isActive }: { item: CarouselSlide; index: n
   };
 
   return (
-    <View style={styles.carouselItem}>
+    <View style={[
+      styles.thrownPhoto,
+      {
+        transform: [
+          { rotate: `${rotation}deg` },
+          { translateX: position.x },
+          { translateY: position.y },
+        ],
+        zIndex: index,
+      }
+    ]}>
       <PhoneFrame>
         <View style={styles.videoContainer}>
           <Video
             ref={videoRef}
-            source={item.video}
+            source={video}
             style={styles.carouselVideo}
             resizeMode={ResizeMode.COVER}
             isLooping={false}
@@ -98,6 +119,44 @@ const CarouselItem = ({ item, index, isActive }: { item: CarouselSlide; index: n
           />
         </View>
       </PhoneFrame>
+    </View>
+  );
+};
+
+// Carousel item showing photo thrown on table
+const CarouselItem = ({ item, index, isActive }: { 
+  item: CarouselSlide; 
+  index: number; 
+  isActive: boolean;
+}) => {
+  // Generate rotation and position for this specific item
+  const rotations = [-12, 8, -15, 10];
+  const positions = [
+    { x: -30, y: -15 },
+    { x: 25, y: 10 },
+    { x: -40, y: -20 },
+    { x: 30, y: 15 },
+  ];
+  
+  const rotation = rotations[index % rotations.length];
+  const position = positions[index % positions.length];
+
+  return (
+    <View style={styles.carouselItem}>
+      {/* Table background */}
+      <View style={styles.tableBackground} />
+      
+      {/* Photo thrown on table */}
+      <View style={styles.photosContainer}>
+        <VideoPhoto
+          video={item.video}
+          index={index}
+          isActive={isActive}
+          rotation={rotation}
+          position={position}
+        />
+      </View>
+      
       <View style={styles.textContainer}>
         <Text style={styles.carouselTitle}>{item.title}</Text>
         <Text style={styles.carouselDescription}>{item.description}</Text>
@@ -184,14 +243,18 @@ const WelcomeScreen = () => {
           </Text>
         </View>
 
-        {/* Carousel - White background section */}
+        {/* Carousel - Blue background section */}
         <View style={styles.carouselSection}>
           <View style={styles.carouselContainer}>
             <FlatList
               ref={flatListRef}
               data={carouselData}
               renderItem={({ item, index }) => (
-                <CarouselItem item={item} index={index} isActive={index === currentIndex} />
+                <CarouselItem 
+                  item={item} 
+                  index={index} 
+                  isActive={index === currentIndex}
+                />
               )}
               keyExtractor={(item) => item.id}
               horizontal
@@ -218,9 +281,10 @@ const WelcomeScreen = () => {
           <Button
             title={t('welcome.login') || 'Login'}
             onPress={handleLogin}
-            variant="outline"
+            variant="primary"
             size="lg"
             style={styles.secondaryButton}
+            textStyle={styles.secondaryButtonText}
           />
           </View>
         </View>
@@ -270,98 +334,213 @@ const styles = StyleSheet.create({
   },
   carouselSection: {
     flex: 1,
-    backgroundColor: theme.colors.backgroundLight,
-    borderTopLeftRadius: theme.borderRadius.xl * 2,
-    borderTopRightRadius: theme.borderRadius.xl * 2,
+    backgroundColor: '#3b82f6', // Match the blue background
     paddingTop: theme.spacing.xl,
+    justifyContent: 'space-between',
+    overflow: 'visible',
   },
   carouselContainer: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: theme.spacing.lg,
+    minHeight: 0, // Allow flex shrinking
+    overflow: 'visible',
   },
   carouselItem: {
     width: SCREEN_WIDTH - theme.spacing.lg * 2,
+    minHeight: SCREEN_HEIGHT * 0.6,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: theme.spacing.md,
+    position: 'relative',
+    overflow: 'visible',
   },
-  phoneFrame: {
+  tableBackground: {
+    position: 'absolute',
+    top: 0,
+    left: -theme.spacing.lg,
+    right: -theme.spacing.lg,
+    bottom: 0,
+    backgroundColor: '#8B7355', // Wooden table color
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#6B5B3D',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  photosContainer: {
+    width: '100%',
+    height: SCREEN_HEIGHT * 0.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    zIndex: 10,
+  },
+  thrownPhoto: {
+    position: 'absolute',
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+    width: PHONE_WIDTH,
+    height: PHONE_HEIGHT,
+  },
+  phone3DContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: theme.spacing.xl,
+    transform: [{ perspective: 1000 }],
+  },
+  phoneTopEdge: {
+    width: PHONE_WIDTH + 8,
+    height: 4,
+    backgroundColor: '#0a0a0a',
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    marginBottom: -2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  phoneBottomEdge: {
+    width: PHONE_WIDTH + 8,
+    height: 4,
+    backgroundColor: '#0a0a0a',
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    marginTop: -2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    elevation: 8,
   },
   phoneBezel: {
     width: PHONE_WIDTH,
     height: PHONE_HEIGHT,
-    minWidth: 200, // Ensure minimum visibility
-    minHeight: 400, // Ensure minimum visibility
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#000000',
     borderRadius: 40,
-    padding: 8,
-    ...theme.shadows.lg,
-    borderWidth: 4,
-    borderColor: '#2a2a2a',
+    padding: 12,
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'visible', // Ensure notch and indicator are visible
+    overflow: 'visible',
+    // Enhanced 3D shadow effects
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.7,
+    shadowRadius: 30,
+    elevation: 20,
+    // Metallic frame effect
+    borderWidth: 3,
+    borderColor: '#1a1a1a',
+    // Inner shadow for depth
+    borderTopColor: '#2a2a2a',
+    borderBottomColor: '#0a0a0a',
+  },
+  phoneLeftEdge: {
+    position: 'absolute',
+    left: 0,
+    top: 12,
+    bottom: 12,
+    width: 3,
+    backgroundColor: '#0a0a0a',
+    borderTopLeftRadius: 40,
+    borderBottomLeftRadius: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: -2, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    zIndex: 5,
+  },
+  phoneRightEdge: {
+    position: 'absolute',
+    right: 0,
+    top: 12,
+    bottom: 12,
+    width: 3,
+    backgroundColor: '#2a2a2a',
+    borderTopRightRadius: 40,
+    borderBottomRightRadius: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    zIndex: 5,
   },
   phoneScreen: {
-    width: Math.max(PHONE_WIDTH - 16, 184), // Account for padding (8 * 2), ensure minimum
-    height: Math.max(PHONE_HEIGHT - 16, 384), // Account for padding (8 * 2), ensure minimum
+    width: PHONE_WIDTH - 24, // Account for padding (12 * 2)
+    height: PHONE_HEIGHT - 24, // Account for padding (12 * 2)
     backgroundColor: '#000000',
     borderRadius: 32,
     overflow: 'hidden',
+    // Screen glass effect
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
   },
   phoneNotch: {
     position: 'absolute',
-    top: 4,
+    top: 8,
     left: '50%',
-    marginLeft: -(PHONE_WIDTH * 0.43) / 2,
-    width: PHONE_WIDTH * 0.43,
-    height: 25,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    zIndex: 10,
+    marginLeft: -(PHONE_WIDTH * 0.4) / 2,
+    width: PHONE_WIDTH * 0.4,
+    height: 28,
+    backgroundColor: '#000000',
+    borderRadius: 14,
+    zIndex: 15,
+    // Notch shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 5,
   },
   homeIndicator: {
     position: 'absolute',
-    bottom: 12,
+    bottom: 10,
     left: '50%',
-    marginLeft: -(PHONE_WIDTH * 0.43) / 2,
-    width: PHONE_WIDTH * 0.43,
-    height: 4,
+    marginLeft: -(PHONE_WIDTH * 0.35) / 2,
+    width: PHONE_WIDTH * 0.35,
+    height: 5,
     backgroundColor: '#ffffff',
-    borderRadius: 2,
-    opacity: 0.3,
-    zIndex: 10,
+    borderRadius: 3,
+    opacity: 0.4,
+    zIndex: 15,
+    // Home indicator shadow
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
   },
   videoContainer: {
     width: '100%',
     height: '100%',
-    borderRadius: 32, // Match phoneScreen borderRadius to ensure proper clipping
     overflow: 'hidden',
   },
   carouselVideo: {
     width: '100%',
     height: '100%',
-    // borderRadius not supported on Video component, rely on container clipping
   },
   textContainer: {
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.lg,
   },
   carouselTitle: {
     fontSize: theme.typography.fontSize['2xl'],
     fontWeight: theme.typography.fontWeight.bold as any,
-    color: theme.colors.textLight,
+    color: '#FFFFFF', // White text for blue background
     textAlign: 'center',
     marginBottom: theme.spacing.sm,
   },
   carouselDescription: {
     fontSize: theme.typography.fontSize.base,
-    color: theme.colors.placeholderLight,
+    color: '#E0E7FF', // Light blue/white for better contrast
     textAlign: 'center',
     lineHeight: 24,
   },
@@ -383,7 +562,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#3b82f6',
   },
   buttonContainer: {
+    paddingHorizontal: theme.spacing.lg,
     paddingBottom: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
     gap: theme.spacing.md,
   },
   primaryButton: {
@@ -392,6 +573,10 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     width: '100%',
+    backgroundColor: '#FFFFFF',
+  },
+  secondaryButtonText: {
+    color: '#3b82f6',
   },
 });
 

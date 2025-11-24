@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,12 @@ import {
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { navigate } from '../../navigation/navigationService';
+import { useRoute } from '@react-navigation/native';
 import { theme } from '../../theme/theme';
 
 const RegisterScreen = () => {
+  const route = useRoute();
+  const { selected_plan_code } = (route.params as any) || {};
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -21,9 +24,16 @@ const RegisterScreen = () => {
     user_type: 'customer' as 'customer' | 'business_owner',
     gdpr_data_processing_consent: false,
     gdpr_marketing_consent: false,
+    selected_plan_code: selected_plan_code || undefined,
   });
   const [loading, setLoading] = useState(false);
   const { register, loginWithGoogle, loginWithFacebook } = useAuth();
+
+  useEffect(() => {
+    if (selected_plan_code) {
+      setFormData(prev => ({ ...prev, selected_plan_code }));
+    }
+  }, [selected_plan_code]);
 
   const handleRegister = async () => {
     if (!formData.email || !formData.password || !formData.first_name || !formData.last_name) {
@@ -95,6 +105,27 @@ const RegisterScreen = () => {
             secureTextEntry
           />
         </View>
+
+        {formData.user_type === 'business_owner' && (
+          <View style={styles.inputContainer}>
+            <TouchableOpacity
+              style={styles.planButton}
+              onPress={() => {
+                navigate('PlanSelection', {
+                  onPlanSelected: (planCode: string) => {
+                    setFormData(prev => ({ ...prev, selected_plan_code: planCode }));
+                  },
+                });
+              }}
+            >
+              <Text style={styles.planButtonText}>
+                {formData.selected_plan_code
+                  ? `Selected: ${formData.selected_plan_code}`
+                  : 'Select Plan (Optional)'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.checkboxContainer}>
           <TouchableOpacity
@@ -329,6 +360,22 @@ const styles = StyleSheet.create({
     color: theme.colors.textLight,
   },
   loginLink: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.primary,
+  },
+  planButton: {
+    width: '100%',
+    height: 56,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.lg,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary + '10',
+  },
+  planButtonText: {
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.primary,

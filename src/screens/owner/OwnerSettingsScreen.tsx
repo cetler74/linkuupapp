@@ -338,6 +338,14 @@ const OwnerSettingsScreen = () => {
           </Text>
           <Card style={styles.settingsCard}>
             <SettingItem
+              icon="credit-card-outline"
+              title={t('billing.title') || 'Billing & Subscription'}
+              subtitle={t('billing.manageSubscription') || 'Manage your subscription and billing'}
+              onPress={() => {
+                navigation.navigate('Billing' as never);
+              }}
+            />
+            <SettingItem
               icon="lock-outline"
               title={t('settings.changePassword') || 'Change Password'}
               onPress={() => {

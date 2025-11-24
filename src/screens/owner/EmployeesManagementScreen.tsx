@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { ownerAPI, type PlaceEmployee, type Place } from '../../api/api';
+import { ownerAPI, billingAPI, type PlaceEmployee, type Place } from '../../api/api';
 import { theme } from '../../theme/theme';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -10,6 +10,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { getImageUrl } from '../../api/api';
 import Logo from '../../components/common/Logo';
+import UpgradePrompt from '../../components/billing/UpgradePrompt';
 
 const EmployeesManagementScreen = () => {
   const { t } = useTranslation();
@@ -23,6 +24,9 @@ const EmployeesManagementScreen = () => {
   const [employees, setEmployees] = useState<PlaceEmployee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<{ plan_code?: string; status?: string } | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<{ code: string; employeeLimit: number } | null>(null);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
 
   useEffect(() => {
     fetchPlaces();
@@ -32,6 +36,7 @@ const EmployeesManagementScreen = () => {
     if (selectedPlaceId) {
       fetchPlace();
       fetchEmployees();
+      fetchSubscriptionStatus();
     }
   }, [selectedPlaceId]);
 
@@ -75,13 +80,44 @@ const EmployeesManagementScreen = () => {
     try {
       setIsLoading(true);
       const response = await ownerAPI.getPlaceEmployees(selectedPlaceId);
-      setEmployees(Array.isArray(response) ? response : []);
+      const employeesList = Array.isArray(response) ? response : [];
+      setEmployees(employeesList);
+      
+      // Check if at limit
+      if (currentPlan && employeesList.length >= currentPlan.employeeLimit) {
+        setShowUpgradePrompt(true);
+      } else {
+        setShowUpgradePrompt(false);
+      }
     } catch (error) {
       console.error('Error fetching employees:', error);
       setEmployees([]);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const fetchSubscriptionStatus = async () => {
+    if (!selectedPlaceId) return;
+    try {
+      const status = await billingAPI.getSubscriptionStatus(selectedPlaceId);
+      setSubscriptionStatus(status);
+      
+      // Get plan details to determine employee limit
+      const plansResponse = await billingAPI.getPlans();
+      if (status.plan_code && plansResponse.plans) {
+        const plan = plansResponse.plans.find((p: any) => p.code === status.plan_code);
+        if (plan) {
+          const employeeFeature = plan.features.find((f: any) => f.feature.code === 'employees');
+          const employeeLimit = employeeFeature?.limit_value || null;
+          if (employeeLimit) {
+            setCurrentPlan({ code: status.plan_code, employeeLimit });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching subscription status:', error);
     }
   };
 
@@ -96,6 +132,13 @@ const EmployeesManagementScreen = () => {
       Alert.alert(t('common.error') || 'Error', t('employees.selectPlaceFirst') || 'Please select a place first');
       return;
     }
+    
+    // Check if at limit
+    if (currentPlan && employees.length >= currentPlan.employeeLimit) {
+      setShowUpgradePrompt(true);
+      return;
+    }
+    
     navigation.navigate('EmployeeForm' as never, {
       placeId: selectedPlaceId,
     } as never);
@@ -180,6 +223,29 @@ const EmployeesManagementScreen = () => {
         <View style={styles.placeInfo}>
           <Text style={styles.placeName}>{place.nome}</Text>
           <Text style={styles.placeLocation}>{place.cidade}</Text>
+          {currentPlan && (
+            <Text style={styles.employeeCount}>
+              {t('employees.count', {
+                current: employees.length,
+                limit: currentPlan.employeeLimit,
+                plan: currentPlan.code.includes('basic') ? t('pricing.basic', { defaultValue: 'Basic' }) : t('pricing.pro', { defaultValue: 'Pro' }),
+                defaultValue: `${employees.length}/${currentPlan.employeeLimit} employees (${currentPlan.code.includes('basic') ? 'Basic' : 'Pro'} plan)`,
+              })}
+            </Text>
+          )}
+        </View>
+      )}
+
+      {/* Upgrade Prompt */}
+      {showUpgradePrompt && currentPlan && (
+        <View style={styles.upgradePromptContainer}>
+          <UpgradePrompt
+            currentPlan={currentPlan.code}
+            limitType="employees"
+            currentCount={employees.length}
+            limitValue={currentPlan.employeeLimit}
+            onDismiss={() => setShowUpgradePrompt(false)}
+          />
         </View>
       )}
 
@@ -271,9 +337,13 @@ const EmployeesManagementScreen = () => {
 
       {/* Floating Action Button */}
       <TouchableOpacity
-        style={styles.fab}
+        style={[
+          styles.fab,
+          currentPlan && employees.length >= currentPlan.employeeLimit && styles.fabDisabled,
+        ]}
         onPress={handleAdd}
         activeOpacity={0.8}
+        disabled={currentPlan && employees.length >= currentPlan.employeeLimit}
       >
         <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
       </TouchableOpacity>
@@ -455,6 +525,18 @@ const styles = StyleSheet.create({
   emptyButton: {
     width: '100%',
     maxWidth: 200,
+  },
+  upgradePromptContainer: {
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+  },
+  employeeCount: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.placeholderLight,
+    marginTop: theme.spacing.xs,
+  },
+  fabDisabled: {
+    opacity: 0.5,
   },
 });
 

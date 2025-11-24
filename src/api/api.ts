@@ -227,7 +227,7 @@ api.interceptors.request.use(
   (config) => {
     console.log('Making API request to:', config.url);
     console.log('Base URL:', config.baseURL);
-    console.log('Full URL:', config.baseURL + config.url);
+    console.log('Full URL:', (config.baseURL || '') + (config.url || ''));
     return config;
   },
   (error) => {
@@ -280,9 +280,12 @@ api.interceptors.response.use(
       console.warn('⚠️ Time-off endpoint not available:', error.config?.url, '- using fallback');
     }
     
-    // Redirect to Billing on payment required (React Native navigation)
+    // Handle 402 Payment Required - upgrade needed
     if (error.response?.status === 402) {
-      navigate('Billing', { reason: 'payment_required' });
+      const errorData = error.response?.data || {};
+      // Don't navigate automatically - let the component handle it
+      // Components will show UpgradePrompt based on error details
+      console.warn('402 Payment Required:', errorData);
       return Promise.reject(error);
     }
     
@@ -1113,16 +1116,44 @@ export const customerAPI = {
 };
 
 export const billingAPI = {
-  createSubscription: async (planCode: 'basic' | 'pro'): Promise<{ clientSecret?: string; subscriptionId: string; trialStarted?: boolean }> => {
+  createSubscription: async (planCode: 'basic' | 'pro' | 'basic_month' | 'basic_annual' | 'pro_month' | 'pro_annual'): Promise<{ clientSecret?: string; subscriptionId: string; trialStarted?: boolean; checkoutUrl?: string }> => {
     const response = await api.post('/billing/create-subscription', { planCode });
     return response.data;
   },
-  getSubscription: async (): Promise<{ subscriptionId?: string; status?: string; planCode?: 'basic' | 'pro' | string }> => {
+  getSubscription: async (): Promise<{ subscriptionId?: string; status?: string; planCode?: 'basic' | 'pro' | 'basic_month' | 'basic_annual' | 'pro_month' | 'pro_annual' | string }> => {
     const response = await api.get('/billing/subscription');
     return response.data;
   },
   getPlans: async (): Promise<{ plans: Array<{ id: number; code: string; name: string; price_cents: number; currency: string; trial_days: number; features: any[] }> }> => {
     const response = await api.get('/subscriptions/plans');
+    return response.data;
+  },
+  changePlan: async (planCode: string): Promise<{ status: string; checkoutUrl?: string; requiresPayment?: boolean }> => {
+    const response = await api.post('/billing/change-plan', { planCode });
+    return response.data;
+  },
+  createCheckoutSession: async (planCode: string, registrationData?: any): Promise<{ checkoutUrl: string }> => {
+    const response = await api.post('/billing/create-checkout-session', { planCode, registrationData });
+    return response.data;
+  },
+  verifyCheckoutSession: async (sessionId: string): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post('/billing/verify-checkout-session', { session_id: sessionId });
+    return response.data;
+  },
+  getPortalLink: async (): Promise<{ url: string }> => {
+    const response = await api.get('/billing/portal-link');
+    return response.data;
+  },
+  syncSubscription: async (): Promise<{ status: string; message: string }> => {
+    const response = await api.post('/billing/sync-subscription');
+    return response.data;
+  },
+  getSubscriptionStatus: async (placeId: number): Promise<{ place_id: number; plan_code?: string; status: string; trial_days_remaining?: number }> => {
+    const response = await api.get(`/subscriptions/status?place_id=${placeId}`);
+    return response.data;
+  },
+  startTrial: async (planCode: string, placeId: number): Promise<{ status: string }> => {
+    const response = await api.post('/subscriptions/start-trial', { plan_code: planCode, place_id: placeId });
     return response.data;
   },
 };

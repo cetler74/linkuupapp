@@ -10,6 +10,7 @@ import Input from '../../components/ui/Input';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import WorkingHoursSelector, { type WorkingHours } from '../../components/employees/WorkingHoursSelector';
+import UpgradePrompt from '../../components/billing/UpgradePrompt';
 
 const EmployeeFormScreen = () => {
   const { t } = useTranslation();
@@ -27,6 +28,12 @@ const EmployeeFormScreen = () => {
   const [removePhoto, setRemovePhoto] = useState(false);
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [creatingService, setCreatingService] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [upgradePromptData, setUpgradePromptData] = useState<{
+    currentPlan?: string;
+    limitValue?: number;
+    currentCount?: number;
+  } | null>(null);
   const [serviceFormData, setServiceFormData] = useState({
     name: '',
     description: '',
@@ -235,6 +242,42 @@ const EmployeeFormScreen = () => {
       navigation.goBack();
     } catch (error: any) {
       console.error('Error saving employee:', error);
+      
+      // Handle 402 Payment Required (limit reached)
+      if (error.response?.status === 402) {
+        const errorData = error.response?.data || {};
+        const currentPlan = errorData.currentPlan || 'basic';
+        const upgradePlan = errorData.upgradePlan || 'pro';
+        
+        // Get employee limit for current plan
+        let limitValue = 2; // Default for basic
+        if (currentPlan.includes('pro')) {
+          limitValue = 5;
+        }
+        
+        // Try to get current employee count from error response or fetch it
+        let currentCount = limitValue; // Default to limit if not provided
+        if (errorData.currentCount !== undefined) {
+          currentCount = errorData.currentCount;
+        } else if (placeId) {
+          // Fetch current employees to get count
+          try {
+            const employees = await ownerAPI.getPlaceEmployees(placeId);
+            currentCount = Array.isArray(employees) ? employees.length : limitValue;
+          } catch (fetchError) {
+            console.error('Error fetching employees for count:', fetchError);
+          }
+        }
+        
+        setUpgradePromptData({
+          currentPlan,
+          limitValue,
+          currentCount,
+        });
+        setShowUpgradePrompt(true);
+        return;
+      }
+      
       Alert.alert(
         t('common.error') || 'Error',
         error.response?.data?.detail || error.message || t('employees.saveError') || 'Failed to save employee'
@@ -740,6 +783,19 @@ const EmployeeFormScreen = () => {
         />
       </ScrollView>
 
+      {/* Upgrade Prompt */}
+      {showUpgradePrompt && upgradePromptData && (
+        <View style={styles.upgradePromptContainer}>
+          <UpgradePrompt
+            currentPlan={upgradePromptData.currentPlan || 'basic'}
+            limitType="employees"
+            currentCount={upgradePromptData.currentCount || upgradePromptData.limitValue || 2}
+            limitValue={upgradePromptData.limitValue || 2}
+            onDismiss={() => setShowUpgradePrompt(false)}
+          />
+        </View>
+      )}
+
       {/* Service Creation Modal */}
       <Modal
         visible={showServiceModal}
@@ -937,6 +993,10 @@ const styles = StyleSheet.create({
   },
   footerButton: {
     flex: 1,
+  },
+  upgradePromptContainer: {
+    paddingHorizontal: theme.spacing.md,
+    paddingBottom: theme.spacing.sm,
   },
   photoSection: {
     marginBottom: theme.spacing.md,
