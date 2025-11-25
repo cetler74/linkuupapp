@@ -106,7 +106,7 @@ const OwnerTabs = () => (
           iconName = focused ? 'calendar' : 'calendar-outline';
         } else if (route.name === 'Customers') {
           iconName = focused ? 'account-group' : 'account-group-outline';
-        } else if (route.name === 'Employees') {
+        } else if (route.name === 'Staff') {
           iconName = focused ? 'account-tie' : 'account-tie-outline';
         } else if (route.name === 'Rewards') {
           iconName = focused ? 'gift' : 'gift-outline';
@@ -132,7 +132,7 @@ const OwnerTabs = () => (
     <Tab.Screen name="Places" component={PlacesListScreen} />
     <Tab.Screen name="Bookings" component={BookingsScreen} />
     <Tab.Screen name="Customers" component={CustomersScreen} />
-    <Tab.Screen name="Employees" component={EmployeesManagementScreen} />
+    <Tab.Screen name="Staff" component={EmployeesManagementScreen} />
     <Tab.Screen name="Rewards" component={OwnerRewardsScreen} />
     <Tab.Screen name="Campaigns" component={CampaignsScreen} />
     <Tab.Screen name="TimeOff" component={TimeOffScreen} />

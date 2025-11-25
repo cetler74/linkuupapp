@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../theme/theme';
 
@@ -18,15 +19,15 @@ const FilterChips: React.FC<FilterChipsProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const filters: { key: FilterType; label: string }[] = [
-    { key: 'all', label: t('bookings.filters.all') || 'All' },
-    { key: 'pending', label: t('bookings.filters.pending') || 'Pending' },
-    { key: 'today', label: t('bookings.filters.today') || 'Today' },
-    { key: 'week', label: t('bookings.filters.thisWeek') || 'This Week' },
+  const filters: { key: FilterType; label: string; icon: string }[] = [
+    { key: 'all', label: t('bookings.filters.all') || 'All', icon: 'view-grid' },
+    { key: 'pending', label: t('bookings.filters.pending') || 'Pending', icon: 'clock-alert-outline' },
+    { key: 'today', label: t('bookings.filters.today') || 'Today', icon: 'calendar-today' },
+    { key: 'week', label: t('bookings.filters.thisWeek') || 'This Week', icon: 'calendar-week' },
   ];
 
   if (selectedEmployeeId) {
-    filters.push({ key: 'employee', label: t('bookings.filters.employee') || 'Employee' });
+    filters.push({ key: 'employee', label: t('bookings.filters.employee') || 'Employee', icon: 'account' });
   }
 
   return (
@@ -46,6 +47,11 @@ const FilterChips: React.FC<FilterChipsProps> = ({
           onPress={() => onFilterChange(filter.key)}
           activeOpacity={0.7}
         >
+          <MaterialCommunityIcons
+            name={filter.icon as any}
+            size={16}
+            color={activeFilter === filter.key ? '#FFFFFF' : theme.colors.textLight}
+          />
           <Text
             style={[
               styles.chipText,
@@ -70,26 +76,31 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
+    paddingVertical: theme.spacing.sm,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.backgroundLight,
-    borderWidth: 1,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1.5,
     borderColor: theme.colors.borderLight,
+    ...theme.shadows.sm,
   },
   chipActive: {
     backgroundColor: theme.colors.primary,
     borderColor: theme.colors.primary,
+    ...theme.shadows.md,
   },
   chipText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.medium as '500',
+    fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.textLight,
   },
   chipTextActive: {
     color: '#FFFFFF',
+    fontWeight: theme.typography.fontWeight.bold,
   },
 });
 
 export default FilterChips;
-

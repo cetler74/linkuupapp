@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, StatusBar, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,6 +7,8 @@ import { theme } from '../../theme/theme';
 import Button from '../../components/ui/Button';
 import Logo from '../../components/common/Logo';
 import { useTranslation } from 'react-i18next';
+
+const { width } = Dimensions.get('window');
 
 interface SettingItemProps {
   icon: string;
@@ -99,7 +101,14 @@ const CustomerProfileScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+
+      {/* Header Background with Curve */}
+      <View style={styles.headerBackground}>
+        <View style={styles.headerCurve} />
+      </View>
+
+      {/* Header Content */}
       <View style={styles.header}>
         <View style={styles.headerBranding}>
           <Logo width={32} height={32} color="#FFFFFF" animated={false} />
@@ -202,14 +211,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.backgroundLight,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 240,
     backgroundColor: theme.colors.primary,
+    zIndex: 0,
+  },
+  headerCurve: {
+    position: 'absolute',
+    bottom: -50,
+    left: 0,
+    right: 0,
+    height: 100,
+    backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: width / 2,
+    borderBottomRightRadius: width / 2,
+    transform: [{ scaleX: 1.5 }],
+  },
+  header: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
+    zIndex: 1,
   },
   headerBranding: {
     flexDirection: 'row',
@@ -220,10 +246,10 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
     color: '#FFFFFF',
-    textAlign: 'center',
   },
   scrollView: {
     flex: 1,
+    zIndex: 1,
   },
   scrollContent: {
     paddingBottom: theme.spacing.xl,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Alert, Dimensions, StatusBar } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { ownerAPI, billingAPI, type PlaceEmployee, type Place } from '../../api/api';
@@ -11,6 +11,8 @@ import { Image } from 'expo-image';
 import { getImageUrl } from '../../api/api';
 import Logo from '../../components/common/Logo';
 import UpgradePrompt from '../../components/billing/UpgradePrompt';
+
+const { width } = Dimensions.get('window');
 
 const EmployeesManagementScreen = () => {
   const { t } = useTranslation();
@@ -177,6 +179,13 @@ const EmployeesManagementScreen = () => {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+
+      {/* Header Background with Curve */}
+      <View style={styles.headerBackground}>
+        <View style={styles.headerCurve} />
+      </View>
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerBranding}>
@@ -363,7 +372,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
+  },
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 180,
     backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  headerCurve: {
+    position: 'absolute',
+    bottom: -50,
+    left: 0,
+    right: 0,
+    height: 100,
+    backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: width / 2,
+    borderBottomRightRadius: width / 2,
+    transform: [{ scaleX: 1.5 }],
   },
   headerBranding: {
     flexDirection: 'row',
@@ -394,8 +423,6 @@ const styles = StyleSheet.create({
   placeSelectorContainer: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
   },
   placeSelector: {
     maxHeight: 60,
@@ -405,24 +432,25 @@ const styles = StyleSheet.create({
   },
   placeChip: {
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: 8,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderWidth: 1,
-    borderColor: theme.colors.borderLight,
+    borderColor: 'rgba(255,255,255,0.3)',
     marginRight: theme.spacing.sm,
   },
   placeChipActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
   },
   placeChipText: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.medium,
-    color: theme.colors.textLight,
+    color: 'rgba(255,255,255,0.9)',
   },
   placeChipTextActive: {
-    color: '#FFFFFF',
+    color: theme.colors.primary,
+    fontWeight: theme.typography.fontWeight.bold,
   },
   placeInfo: {
     paddingHorizontal: theme.spacing.md,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Switch, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Switch, Alert, Modal, StatusBar, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -9,6 +9,8 @@ import Card from '../../components/ui/Card';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import i18n from '../../i18n/i18n';
 import Logo from '../../components/common/Logo';
+
+const { width } = Dimensions.get('window');
 
 interface FeatureSettings {
   bookings_enabled: boolean;
@@ -73,11 +75,12 @@ const OwnerSettingsScreen = () => {
 
   const fetchFeatureSettings = async () => {
     if (!selectedPlaceId) return;
-    
+
     try {
-      // TODO: Implement API call to fetch feature settings
-      // const response = await ownerAPI.getPlaceFeatureSettings(selectedPlaceId);
-      // setFeatureSettings(response.feature_settings);
+      const response = await ownerAPI.getPlaceFeatureSettings(selectedPlaceId);
+      if (response && response.feature_settings) {
+        setFeatureSettings(response.feature_settings);
+      }
     } catch (error) {
       console.error('Error fetching feature settings:', error);
     }
@@ -103,8 +106,7 @@ const OwnerSettingsScreen = () => {
 
     try {
       setSaving(true);
-      // TODO: Implement API call to update feature settings
-      // await ownerAPI.updatePlaceFeatureSettings(selectedPlaceId, newSettings);
+      await ownerAPI.updatePlaceFeatureSettings(selectedPlaceId, newSettings);
     } catch (error) {
       console.error('Error updating feature settings:', error);
       // Revert on error
@@ -120,7 +122,7 @@ const OwnerSettingsScreen = () => {
       setCurrentLanguage(languageCode);
       await i18n.changeLanguage(languageCode);
       setShowLanguageModal(false);
-      
+
       // Save language preference to backend
       try {
         await authAPI.updateLanguagePreference(languageCode);
@@ -172,7 +174,13 @@ const OwnerSettingsScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+
+      {/* Header Background with Curve */}
+      <View style={styles.headerBackground}>
+        <View style={styles.headerCurve} />
+      </View>
+
       <View style={styles.header}>
         <View style={styles.headerBranding}>
           <Logo width={32} height={32} color="#FFFFFF" animated={false} />
@@ -186,150 +194,167 @@ const OwnerSettingsScreen = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#FFFFFF"
+            colors={[theme.colors.primary]}
+          />
         }
       >
-        {/* Profile Section */}
-        <View style={styles.section}>
-          <View style={styles.profileCard}>
-            <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>
-                {(user?.first_name || user?.email || 'O')[0].toUpperCase()}
-              </Text>
-            </View>
+        {/* Profile Section - Integrated into Header */}
+        <View style={styles.profileSection}>
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>
+              {(user?.name || user?.email || 'O')[0].toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.profileInfo}>
             <Text style={styles.userName}>
-              {user?.first_name || user?.email || 'Owner'}
+              {user?.name || user?.email || 'Owner'}
             </Text>
             <Text style={styles.userEmail}>{user?.email || ''}</Text>
-          </View>
-        </View>
+          </View >
+          <TouchableOpacity
+            style={styles.editProfileButton}
+            onPress={() => Alert.alert('Edit Profile', 'Coming soon')}
+          >
+            <MaterialCommunityIcons name="pencil" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View >
 
         {/* Place Selector */}
-        {places.length > 1 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              {t('settings.selectPlace') || 'Select Place'}
-            </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.placeSelector}
-              contentContainerStyle={styles.placeSelectorContent}
-            >
-              {places.map((place) => (
-                <TouchableOpacity
-                  key={place.id}
-                  style={[
-                    styles.placeChip,
-                    selectedPlaceId === place.id && styles.placeChipActive,
-                  ]}
-                  onPress={() => setSelectedPlaceId(place.id)}
-                >
-                  <Text
+        {
+          places.length > 1 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                {t('settings.selectPlace') || 'Select Place'}
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.placeSelector}
+                contentContainerStyle={styles.placeSelectorContent}
+              >
+                {places.map((place) => (
+                  <TouchableOpacity
+                    key={place.id}
                     style={[
-                      styles.placeChipText,
-                      selectedPlaceId === place.id && styles.placeChipTextActive,
+                      styles.placeChip,
+                      selectedPlaceId === place.id && styles.placeChipActive,
                     ]}
+                    onPress={() => setSelectedPlaceId(place.id)}
                   >
-                    {place.nome}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+                    <Text
+                      style={[
+                        styles.placeChipText,
+                        selectedPlaceId === place.id && styles.placeChipTextActive,
+                      ]}
+                    >
+                      {place.nome}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )
+        }
 
         {/* Feature Settings */}
-        {selectedPlace && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              {t('settings.featureSettings') || 'Feature Settings'}
-            </Text>
-            <Card style={styles.settingsCard}>
-              <SettingToggle
-                icon="calendar"
-                title={t('settings.bookings') || 'Bookings'}
-                subtitle={t('settings.bookingsDesc') || 'Allow customers to book services'}
-                value={featureSettings.bookings_enabled}
-                onValueChange={() => handleFeatureToggle('bookings_enabled')}
-                disabled={saving}
-              />
-              <SettingToggle
-                icon="gift"
-                title={t('settings.rewards') || 'Rewards'}
-                subtitle={t('settings.rewardsDesc') || 'Enable rewards program for customers'}
-                value={featureSettings.rewards_enabled}
-                onValueChange={() => handleFeatureToggle('rewards_enabled')}
-                disabled={saving}
-              />
-              <SettingToggle
-                icon="calendar-clock"
-                title={t('settings.timeOff') || 'Time Off'}
-                subtitle={t('settings.timeOffDesc') || 'Allow employees to request time off'}
-                value={featureSettings.time_off_enabled}
-                onValueChange={() => handleFeatureToggle('time_off_enabled')}
-                disabled={saving}
-              />
-              <SettingToggle
-                icon="bullhorn"
-                title={t('settings.campaigns') || 'Campaigns'}
-                subtitle={t('settings.campaignsDesc') || 'Create and manage marketing campaigns'}
-                value={featureSettings.campaigns_enabled}
-                onValueChange={() => handleFeatureToggle('campaigns_enabled')}
-                disabled={saving}
-              />
-              <SettingToggle
-                icon="message-text"
-                title={t('settings.messaging') || 'Messaging'}
-                subtitle={t('settings.messagingDesc') || 'Enable customer messaging'}
-                value={featureSettings.messaging_enabled}
-                onValueChange={() => handleFeatureToggle('messaging_enabled')}
-                disabled={saving}
-              />
-              <SettingToggle
-                icon="bell"
-                title={t('settings.notifications') || 'Notifications'}
-                subtitle={t('settings.notificationsDesc') || 'Receive push and email notifications'}
-                value={featureSettings.notifications_enabled}
-                onValueChange={() => handleFeatureToggle('notifications_enabled')}
-                disabled={saving}
-                isLast
-              />
-            </Card>
-          </View>
-        )}
+        {
+          selectedPlace && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                {t('settings.featureSettings') || 'Feature Settings'}
+              </Text>
+              <Card style={styles.settingsCard}>
+                <SettingToggle
+                  icon="calendar"
+                  title={t('settings.bookings') || 'Bookings'}
+                  subtitle={t('settings.bookingsDesc') || 'Allow customers to book services'}
+                  value={featureSettings.bookings_enabled}
+                  onValueChange={() => handleFeatureToggle('bookings_enabled')}
+                  disabled={saving}
+                />
+                <SettingToggle
+                  icon="gift"
+                  title={t('settings.rewards') || 'Rewards'}
+                  subtitle={t('settings.rewardsDesc') || 'Enable rewards program for customers'}
+                  value={featureSettings.rewards_enabled}
+                  onValueChange={() => handleFeatureToggle('rewards_enabled')}
+                  disabled={saving}
+                />
+                <SettingToggle
+                  icon="calendar-clock"
+                  title={t('settings.timeOff') || 'Time Off'}
+                  subtitle={t('settings.timeOffDesc') || 'Allow employees to request time off'}
+                  value={featureSettings.time_off_enabled}
+                  onValueChange={() => handleFeatureToggle('time_off_enabled')}
+                  disabled={saving}
+                />
+                <SettingToggle
+                  icon="bullhorn"
+                  title={t('settings.campaigns') || 'Campaigns'}
+                  subtitle={t('settings.campaignsDesc') || 'Create and manage marketing campaigns'}
+                  value={featureSettings.campaigns_enabled}
+                  onValueChange={() => handleFeatureToggle('campaigns_enabled')}
+                  disabled={saving}
+                />
+                <SettingToggle
+                  icon="message-text"
+                  title={t('settings.messaging') || 'Messaging'}
+                  subtitle={t('settings.messagingDesc') || 'Enable customer messaging'}
+                  value={featureSettings.messaging_enabled}
+                  onValueChange={() => handleFeatureToggle('messaging_enabled')}
+                  disabled={saving}
+                />
+                <SettingToggle
+                  icon="bell"
+                  title={t('settings.notifications') || 'Notifications'}
+                  subtitle={t('settings.notificationsDesc') || 'Receive push and email notifications'}
+                  value={featureSettings.notifications_enabled}
+                  onValueChange={() => handleFeatureToggle('notifications_enabled')}
+                  disabled={saving}
+                  isLast
+                />
+              </Card>
+            </View>
+          )
+        }
 
         {/* Management */}
-        {selectedPlace && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              {t('settings.management') || 'Management'}
-            </Text>
-            <Card style={styles.settingsCard}>
-              <SettingItem
-                icon="office-building-outline"
-                title={t('settings.managePlaces') || 'Manage Places'}
-                subtitle={t('settings.managePlacesDesc') || 'View and manage your business places'}
-                onPress={() => {
-                  navigation.navigate('Places' as never);
-                }}
-              />
-              <SettingItem
-                icon="content-cut"
-                title={t('settings.manageServices') || 'Manage Services'}
-                subtitle={t('settings.manageServicesDesc') || 'Add, edit, or remove services'}
-                onPress={() => {
-                  if (selectedPlaceId) {
-                    navigation.navigate('ServicesManagement' as never, { placeId: selectedPlaceId } as never);
-                  } else {
-                    Alert.alert(t('common.error') || 'Error', t('settings.selectPlaceFirst') || 'Please select a place first');
-                  }
-                }}
-                isLast
-              />
-            </Card>
-          </View>
-        )}
+        {
+          selectedPlace && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                {t('settings.management') || 'Management'}
+              </Text>
+              <Card style={styles.settingsCard}>
+                <SettingItem
+                  icon="office-building-outline"
+                  title={t('settings.managePlaces') || 'Manage Places'}
+                  subtitle={t('settings.managePlacesDesc') || 'View and manage your business places'}
+                  onPress={() => {
+                    navigation.navigate('Places' as never);
+                  }}
+                />
+                <SettingItem
+                  icon="content-cut"
+                  title={t('settings.manageServices') || 'Manage Services'}
+                  subtitle={t('settings.manageServicesDesc') || 'Add, edit, or remove services'}
+                  onPress={() => {
+                    if (selectedPlaceId) {
+                      navigation.navigate('ServicesManagement' as never, { placeId: selectedPlaceId } as never);
+                    } else {
+                      Alert.alert(t('common.error') || 'Error', t('settings.selectPlaceFirst') || 'Please select a place first');
+                    }
+                  }}
+                  isLast
+                />
+              </Card>
+            </View>
+          )
+        }
 
         {/* Account Settings */}
         <View style={styles.section}>
@@ -349,7 +374,6 @@ const OwnerSettingsScreen = () => {
               icon="lock-outline"
               title={t('settings.changePassword') || 'Change Password'}
               onPress={() => {
-                // TODO: Navigate to change password screen
                 Alert.alert(t('settings.changePassword') || 'Change Password', 'Coming soon');
               }}
             />
@@ -364,7 +388,6 @@ const OwnerSettingsScreen = () => {
               title={t('settings.notificationPreferences') || 'Notification Preferences'}
               subtitle={t('settings.notificationPreferencesDesc') || 'Manage notification settings'}
               onPress={() => {
-                // TODO: Navigate to notification preferences screen
                 Alert.alert(t('settings.notificationPreferences') || 'Notification Preferences', 'Coming soon');
               }}
             />
@@ -372,7 +395,6 @@ const OwnerSettingsScreen = () => {
               icon="help-circle-outline"
               title={t('settings.help') || 'Help & Support'}
               onPress={() => {
-                // TODO: Navigate to help screen
                 Alert.alert(t('settings.help') || 'Help & Support', 'Coming soon');
               }}
               isLast
@@ -391,10 +413,10 @@ const OwnerSettingsScreen = () => {
             {t('settings.logout') || 'Log Out'}
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </ScrollView >
 
       {/* Language Selection Modal */}
-      <Modal
+      < Modal
         visible={showLanguageModal}
         animationType="slide"
         presentationStyle="pageSheet"
@@ -445,8 +467,8 @@ const OwnerSettingsScreen = () => {
             ))}
           </ScrollView>
         </View>
-      </Modal>
-    </View>
+      </Modal >
+    </View >
   );
 };
 
@@ -472,7 +494,9 @@ const SettingToggle: React.FC<SettingToggleProps> = ({
   return (
     <View style={[styles.settingRow, isLast && styles.settingRowLast]}>
       <View style={styles.settingRowLeft}>
-        <MaterialCommunityIcons name={icon as any} size={24} color={theme.colors.textLight} />
+        <View style={styles.iconBox}>
+          <MaterialCommunityIcons name={icon as any} size={22} color={theme.colors.primary} />
+        </View>
         <View style={styles.settingRowText}>
           <Text style={styles.settingRowTitle}>{title}</Text>
           {subtitle && <Text style={styles.settingRowSubtitle}>{subtitle}</Text>}
@@ -511,13 +535,15 @@ const SettingItem: React.FC<SettingItemProps> = ({
       activeOpacity={0.7}
     >
       <View style={styles.settingRowLeft}>
-        <MaterialCommunityIcons name={icon as any} size={24} color={theme.colors.textLight} />
+        <View style={styles.iconBox}>
+          <MaterialCommunityIcons name={icon as any} size={22} color={theme.colors.primary} />
+        </View>
         <View style={styles.settingRowText}>
           <Text style={styles.settingRowTitle}>{title}</Text>
           {subtitle && <Text style={styles.settingRowSubtitle}>{subtitle}</Text>}
         </View>
       </View>
-      <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.placeholderLight} />
+      <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.placeholderLight} />
     </TouchableOpacity>
   );
 };
@@ -527,14 +553,34 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.backgroundLight,
   },
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 180,
+    backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  headerCurve: {
+    position: 'absolute',
+    bottom: -50,
+    left: 0,
+    right: 0,
+    height: 100,
+    backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: width / 2,
+    borderBottomRightRadius: width / 2,
+    transform: [{ scaleX: 1.5 }],
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
   },
   headerBranding: {
     flexDirection: 'row',
@@ -552,8 +598,52 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: theme.spacing.xl,
   },
+  profileSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
+    marginTop: theme.spacing.sm,
+  },
+  avatarContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  avatarText: {
+    fontSize: 24,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: '#FFFFFF',
+  },
+  profileInfo: {
+    flex: 1,
+    marginLeft: theme.spacing.md,
+  },
+  userName: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  userEmail: {
+    fontSize: theme.typography.fontSize.sm,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  editProfileButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   section: {
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     marginTop: theme.spacing.lg,
   },
   sectionTitle: {
@@ -561,36 +651,7 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.textLight,
     marginBottom: theme.spacing.md,
-  },
-  profileCard: {
-    alignItems: 'center',
-    paddingVertical: theme.spacing.lg,
-    backgroundColor: theme.colors.backgroundLight,
-    borderRadius: theme.borderRadius.lg,
-  },
-  avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  avatarText: {
-    fontSize: theme.typography.fontSize['3xl'],
-    fontWeight: theme.typography.fontWeight.bold,
-    color: '#FFFFFF',
-  },
-  userName: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textLight,
-    marginBottom: theme.spacing.xs,
-  },
-  userEmail: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.placeholderLight,
+    marginLeft: theme.spacing.xs,
   },
   placeSelector: {
     maxHeight: 60,
@@ -602,10 +663,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.borderLight,
     marginRight: theme.spacing.sm,
+    ...theme.shadows.sm,
   },
   placeChipActive: {
     backgroundColor: theme.colors.primary,
@@ -618,9 +680,13 @@ const styles = StyleSheet.create({
   },
   placeChipTextActive: {
     color: '#FFFFFF',
+    fontWeight: theme.typography.fontWeight.bold,
   },
   settingsCard: {
     padding: 0,
+    borderRadius: theme.borderRadius.xl,
+    overflow: 'hidden',
+    ...theme.shadows.md,
   },
   settingRow: {
     flexDirection: 'row',
@@ -630,6 +696,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.surface,
   },
   settingRowLast: {
     borderBottomWidth: 0,
@@ -638,6 +705,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+  },
+  iconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: `${theme.colors.primary}10`,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   settingRowText: {
     marginLeft: theme.spacing.md,
@@ -650,7 +725,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   settingRowSubtitle: {
-    fontSize: theme.typography.fontSize.sm,
+    fontSize: theme.typography.fontSize.xs,
     color: theme.colors.placeholderLight,
     marginTop: 2,
   },
@@ -659,15 +734,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fee2e2',
-    marginHorizontal: theme.spacing.md,
+    marginHorizontal: theme.spacing.lg,
     marginTop: theme.spacing.xl,
     paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.borderRadius.xl,
     gap: theme.spacing.sm,
   },
   logoutText: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.medium,
+    fontWeight: theme.typography.fontWeight.bold,
     color: '#ef4444',
   },
   modalContainer: {
@@ -678,7 +753,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
     borderBottomWidth: 1,
@@ -700,12 +775,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderLight,
   },
   languageOptionActive: {
-    backgroundColor: theme.colors.primary + '10',
+    backgroundColor: `${theme.colors.primary}10`,
   },
   languageOptionContent: {
     flex: 1,
@@ -714,7 +789,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.textLight,
-    marginBottom: theme.spacing.xs / 2,
+    marginBottom: 4,
   },
   languageNameActive: {
     fontWeight: theme.typography.fontWeight.bold,

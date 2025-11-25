@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, StatusBar, Dimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { customerAPI } from '../../api/api';
 import { theme } from '../../theme/theme';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Logo from '../../components/common/Logo';
+
+const { width } = Dimensions.get('window');
 
 interface Reward {
   id: number;
@@ -19,66 +21,54 @@ interface Reward {
 
 const CustomerRewardsScreen = () => {
   const { t } = useTranslation();
-  const [points, setPoints] = useState(1250);
+  const [points, setPoints] = useState(0);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchRewards();
-    fetchPoints();
   }, []);
-
-  const fetchPoints = async () => {
-    try {
-      // Fetch user points from API
-      // const response = await customerAPI.getPoints();
-      // setPoints(response.points);
-    } catch (error) {
-      console.error('Error fetching points:', error);
-    }
-  };
 
   const fetchRewards = async () => {
     try {
       setIsLoading(true);
-      // Fetch available rewards from API
-      // const response = await customerAPI.getRewards();
-      // setRewards(response);
+      const response = await customerAPI.getRewards();
       
-      // Mock data for now
-      setRewards([
-        {
-          id: 1,
-          name: '10% Off Next Booking',
-          description: 'Get 10% discount on your next appointment',
-          points_required: 500,
-          discount_type: 'percentage',
-          discount_value: 10,
-          is_available: true,
-        },
-        {
-          id: 2,
-          name: 'Free Service',
-          description: 'Redeem a free service of your choice',
-          points_required: 1000,
-          discount_type: 'fixed',
-          discount_value: 0,
-          is_available: true,
-        },
-        {
-          id: 3,
-          name: '20% Off Premium Services',
-          description: '20% discount on premium services',
-          points_required: 1500,
-          discount_type: 'percentage',
-          discount_value: 20,
-          is_available: true,
-        },
-      ]);
+      // Handle different possible response structures
+      if (response) {
+        // If response has points and rewards separately
+        if (response.points !== undefined) {
+          setPoints(response.points || 0);
+        }
+        
+        // If response has rewards array
+        if (Array.isArray(response.rewards)) {
+          setRewards(response.rewards);
+        } else if (Array.isArray(response)) {
+          // If response is directly an array of rewards
+          setRewards(response);
+        } else if (response.rewards && Array.isArray(response.rewards)) {
+          setRewards(response.rewards);
+        } else {
+          // If response has a different structure, try to extract rewards
+          const rewardsList = response.available_rewards || response.reward_list || [];
+          setRewards(Array.isArray(rewardsList) ? rewardsList : []);
+          
+          // Try to get points from response
+          if (response.current_points !== undefined) {
+            setPoints(response.current_points);
+          } else if (response.points_balance !== undefined) {
+            setPoints(response.points_balance);
+          } else if (response.user_points !== undefined) {
+            setPoints(response.user_points);
+          }
+        }
+      }
     } catch (error) {
       console.error('Error fetching rewards:', error);
       setRewards([]);
+      setPoints(0);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -88,14 +78,15 @@ const CustomerRewardsScreen = () => {
   const handleRefresh = () => {
     setRefreshing(true);
     fetchRewards();
-    fetchPoints();
   };
 
   const handleRedeem = async (rewardId: number) => {
     try {
+      // TODO: Implement redeemReward API call when available
       // await customerAPI.redeemReward(rewardId);
       alert(t('rewards.redeemed') || 'Reward redeemed successfully!');
-      fetchPoints();
+      // Refresh rewards to update points after redemption
+      fetchRewards();
     } catch (error) {
       console.error('Error redeeming reward:', error);
       alert(t('rewards.redeemError') || 'Error redeeming reward');
@@ -104,7 +95,14 @@ const CustomerRewardsScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+
+      {/* Header Background with Curve */}
+      <View style={styles.headerBackground}>
+        <View style={styles.headerCurve} />
+      </View>
+
+      {/* Header Content */}
       <View style={styles.header}>
         <View style={styles.headerBranding}>
           <Logo width={32} height={32} color="#FFFFFF" animated={false} />
@@ -229,14 +227,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.backgroundLight,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 240,
     backgroundColor: theme.colors.primary,
+    zIndex: 0,
+  },
+  headerCurve: {
+    position: 'absolute',
+    bottom: -50,
+    left: 0,
+    right: 0,
+    height: 100,
+    backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: width / 2,
+    borderBottomRightRadius: width / 2,
+    transform: [{ scaleX: 1.5 }],
+  },
+  header: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
+    zIndex: 1,
   },
   headerBranding: {
     flexDirection: 'row',
@@ -250,6 +265,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    zIndex: 1,
   },
   pointsCard: {
     backgroundColor: theme.colors.primary,

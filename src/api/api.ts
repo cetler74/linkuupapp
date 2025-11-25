@@ -1090,6 +1090,32 @@ export const ownerAPI = {
     const response = await api.post(`/owner/messages/${messageId}/reply`, { content });
     return response.data;
   },
+  // Feature Settings
+  getPlaceFeatureSettings: async (placeId: number): Promise<{ feature_settings: any }> => {
+    try {
+      const response = await api.get(`/owner/places/${placeId}/features`);
+      return response.data;
+    } catch (error: any) {
+      // Fallback if endpoint doesn't exist yet
+      if (error.response?.status === 404) {
+        return {
+          feature_settings: {
+            bookings_enabled: true,
+            rewards_enabled: false,
+            time_off_enabled: true,
+            campaigns_enabled: true,
+            messaging_enabled: true,
+            notifications_enabled: true,
+          }
+        };
+      }
+      throw error;
+    }
+  },
+  updatePlaceFeatureSettings: async (placeId: number, settings: any): Promise<{ message: string }> => {
+    const response = await api.put(`/owner/places/${placeId}/features`, settings);
+    return response.data;
+  },
 };
 
 export const customerAPI = {

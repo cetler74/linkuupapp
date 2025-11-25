@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Modal, StatusBar, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -13,6 +13,8 @@ import EmployeeBookingView from '../../components/bookings/EmployeeBookingView';
 import BookingDetailModal from '../../components/bookings/BookingDetailModal';
 import { type Booking } from '../../components/bookings/BookingCard';
 import Logo from '../../components/common/Logo';
+
+const { width } = Dimensions.get('window');
 
 const BookingsScreen = () => {
   const { t } = useTranslation();
@@ -32,6 +34,7 @@ const BookingsScreen = () => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showBookingDetail, setShowBookingDetail] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
   useEffect(() => {
     fetchPlaces();
@@ -77,7 +80,7 @@ const BookingsScreen = () => {
 
   const fetchBookings = async () => {
     if (!selectedPlaceId) return [];
-    
+
     try {
       setIsLoading(true);
       const response = await ownerAPI.getPlaceBookings(selectedPlaceId);
@@ -91,6 +94,7 @@ const BookingsScreen = () => {
     } finally {
       setIsLoading(false);
       setRefreshing(false);
+      setLastUpdated(new Date());
     }
   };
 
@@ -150,9 +154,6 @@ const BookingsScreen = () => {
       alert(t('bookings.selectPlaceFirst') || 'Please select a place first');
       return;
     }
-    // Navigate to booking creation screen
-    // Note: This screen needs to be created - for now it will show an error
-    // but the navigation structure is in place
     (navigation as any).navigate('AddBooking', { placeId: selectedPlaceId });
   };
 
@@ -243,8 +244,31 @@ const BookingsScreen = () => {
     return bookings.filter((b) => b.status === 'pending');
   }, [bookings]);
 
+  const hasActiveFilters = filter !== 'all' || selectedEmployeeId !== null;
+
+  const handleClearFilters = () => {
+    setFilter('all');
+    setSelectedEmployeeId(null);
+  };
+
+  const getTimeSinceUpdate = () => {
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - lastUpdated.getTime()) / 1000);
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return 'Today';
+  };
+
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+
+      {/* Header Background with Curve */}
+      <View style={styles.headerBackground}>
+        <View style={styles.headerCurve} />
+      </View>
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerBranding}>
@@ -266,6 +290,13 @@ const BookingsScreen = () => {
           )}
           <TouchableOpacity
             style={styles.headerButton}
+            onPress={handleRefresh}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="refresh" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerButton}
             onPress={() => setShowCalendarModal(true)}
             activeOpacity={0.7}
           >
@@ -281,57 +312,163 @@ const BookingsScreen = () => {
         </View>
       </View>
 
+      {/* Last Updated */}
+      <View style={styles.lastUpdatedContainer}>
+        <Text style={styles.lastUpdatedText}>
+          Last updated: {getTimeSinceUpdate()}
+        </Text>
+      </View>
+
       {/* Place Selector */}
       {places.length > 1 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.placeSelector}
-          contentContainerStyle={styles.placeSelectorContent}
-        >
-          {places.map((place) => (
-            <TouchableOpacity
-              key={place.id}
-              style={[
-                styles.placeChip,
-                selectedPlaceId === place.id && styles.placeChipActive,
-              ]}
-              onPress={() => setSelectedPlaceId(place.id)}
-            >
-              <Text
+        <View style={styles.placeSelectorContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.placeSelectorContent}
+          >
+            {places.map((place) => (
+              <TouchableOpacity
+                key={place.id}
                 style={[
-                  styles.placeChipText,
-                  selectedPlaceId === place.id && styles.placeChipTextActive,
+                  styles.placeChip,
+                  selectedPlaceId === place.id && styles.placeChipActive,
                 ]}
+                onPress={() => setSelectedPlaceId(place.id)}
               >
-                {place.nome}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+                <Text
+                  style={[
+                    styles.placeChipText,
+                    selectedPlaceId === place.id && styles.placeChipTextActive,
+                  ]}
+                >
+                  {place.nome}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
       )}
 
       {/* Compact Stats Bar */}
-      <CompactStatsBar
-        todayCount={stats.todayCount}
-        pendingCount={stats.pendingCount}
-        weekTotal={stats.weekTotal}
-        onTodayPress={() => setFilter('today')}
-        onPendingPress={() => setFilter('pending')}
-        onWeekPress={() => setFilter('week')}
-      />
+      <View style={styles.statsContainer}>
+        <CompactStatsBar
+          todayCount={stats.todayCount}
+          pendingCount={stats.pendingCount}
+          weekTotal={stats.weekTotal}
+          onStatPress={(stat) => {
+            if (stat === 'today') setFilter('today');
+            else if (stat === 'pending') setFilter('pending');
+            else if (stat === 'week') setFilter('week');
+          }}
+        />
+      </View>
 
       {/* Filter Chips */}
-      <FilterChips
-        activeFilter={filter}
-        onFilterChange={setFilter}
-        selectedEmployeeId={selectedEmployeeId}
-      />
+      <View style={styles.filterContainer}>
+        <View style={styles.filterHeader}>
+          <FilterChips
+            activeFilter={filter}
+            onFilterChange={setFilter}
+            selectedEmployeeId={selectedEmployeeId}
+          />
+          {hasActiveFilters && (
+            <TouchableOpacity
+              style={styles.clearFiltersButton}
+              onPress={handleClearFilters}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="close-circle" size={18} color={theme.colors.primary} />
+              <Text style={styles.clearFiltersText}>Clear</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Quick Actions Bar */}
+      <View style={styles.quickActionsBar}>
+        <TouchableOpacity
+          style={styles.quickActionButton}
+          onPress={handleAddBooking}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons name="plus-circle" size={20} color={theme.colors.primary} />
+          <Text style={styles.quickActionText}>New Booking</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.quickActionButton}
+          onPress={() => setFilter('today')}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons name="calendar-today" size={20} color={theme.colors.primary} />
+          <Text style={styles.quickActionText}>Today</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.quickActionButton}
+          onPress={() => setFilter('pending')}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons name="clock-alert-outline" size={20} color={theme.colors.warning} />
+          <Text style={styles.quickActionText}>Pending</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Content */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          {/* Skeleton Loading */}
+          <View style={styles.skeletonContainer}>
+            {[1, 2, 3, 4].map((i) => (
+              <View key={i} style={styles.skeletonCard}>
+                <View style={styles.skeletonHeader}>
+                  <View style={styles.skeletonCircle} />
+                  <View style={styles.skeletonTextContainer}>
+                    <View style={[styles.skeletonText, { width: '60%' }]} />
+                    <View style={[styles.skeletonText, { width: '40%', marginTop: 8 }]} />
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : filteredBookings.length === 0 ? (
+        <View style={styles.emptyStateContainer}>
+          <MaterialCommunityIcons
+            name={hasActiveFilters ? "filter-remove" : "calendar-blank"}
+            size={64}
+            color={theme.colors.placeholderLight}
+          />
+          <Text style={styles.emptyStateTitle}>
+            {hasActiveFilters
+              ? 'No bookings match your filters'
+              : bookings.length === 0
+                ? 'No bookings yet'
+                : 'No upcoming bookings'}
+          </Text>
+          <Text style={styles.emptyStateSubtitle}>
+            {hasActiveFilters
+              ? 'Try adjusting your filters to see more results'
+              : bookings.length === 0
+                ? 'Create your first booking to get started'
+                : 'All bookings are in the past'}
+          </Text>
+          {hasActiveFilters ? (
+            <TouchableOpacity
+              style={styles.emptyStateButton}
+              onPress={handleClearFilters}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.emptyStateButtonText}>Clear Filters</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.emptyStateButton}
+              onPress={handleAddBooking}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.emptyStateButtonText}>Create Booking</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         <SectionGroupedBookingList
@@ -451,6 +588,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.backgroundLight,
   },
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 180,
+    backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  headerCurve: {
+    position: 'absolute',
+    bottom: -50,
+    left: 0,
+    right: 0,
+    height: 100,
+    backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: width / 2,
+    borderBottomRightRadius: width / 2,
+    transform: [{ scaleX: 1.5 }],
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -458,7 +616,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
   },
   headerBranding: {
     flexDirection: 'row',
@@ -468,7 +625,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold as '700',
+    fontWeight: theme.typography.fontWeight.bold,
     color: '#FFFFFF',
   },
   headerActions: {
@@ -487,41 +644,49 @@ const styles = StyleSheet.create({
   },
   pendingBadgeText: {
     fontSize: theme.typography.fontSize.xs,
-    fontWeight: theme.typography.fontWeight.bold as '700',
+    fontWeight: theme.typography.fontWeight.bold,
     color: '#FFFFFF',
   },
   headerButton: {
     padding: theme.spacing.xs,
   },
-  placeSelector: {
-    maxHeight: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
+  placeSelectorContainer: {
+    paddingVertical: theme.spacing.md,
   },
   placeSelectorContent: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
     gap: theme.spacing.sm,
   },
   placeChip: {
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: 8,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderWidth: 1,
-    borderColor: theme.colors.borderLight,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   placeChipActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
   },
   placeChipText: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.medium as '500',
-    color: theme.colors.textLight,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: 'rgba(255,255,255,0.9)',
   },
   placeChipTextActive: {
-    color: '#FFFFFF',
+    color: theme.colors.primary,
+    fontWeight: theme.typography.fontWeight.bold,
+  },
+  statsContainer: {
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
+    overflow: 'hidden',
+    ...theme.shadows.sm,
+  },
+  filterContainer: {
+    marginBottom: theme.spacing.sm,
   },
   loadingContainer: {
     flex: 1,
@@ -555,15 +720,139 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.backgroundLight,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderLight,
   },
   modalTitle: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold as '700',
-    color: '#FFFFFF',
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.textLight,
   },
   modalCloseButton: {
     padding: theme.spacing.xs,
+  },
+  lastUpdatedContainer: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.xs,
+    alignItems: 'center',
+  },
+  lastUpdatedText: {
+    fontSize: theme.typography.fontSize.xs,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+  filterHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  clearFiltersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
+    gap: 4,
+    ...theme.shadows.sm,
+  },
+  clearFiltersText: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.primary,
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+  quickActionsBar: {
+    flexDirection: 'row',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.backgroundLight,
+  },
+  quickActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.xs,
+    borderRadius: theme.borderRadius.lg,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    ...theme.shadows.sm,
+  },
+  quickActionText: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.textLight,
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.xl * 2,
+  },
+  emptyStateTitle: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.textLight,
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
+  },
+  emptyStateSubtitle: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.placeholderLight,
+    textAlign: 'center',
+    marginBottom: theme.spacing.xl,
+    lineHeight: 20,
+  },
+  emptyStateButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    ...theme.shadows.md,
+  },
+  emptyStateButtonText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: '#FFFFFF',
+  },
+  skeletonContainer: {
+    flex: 1,
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+  },
+  skeletonCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+  },
+  skeletonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  skeletonCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: theme.colors.borderLight,
+    marginRight: theme.spacing.md,
+  },
+  skeletonTextContainer: {
+    flex: 1,
+  },
+  skeletonText: {
+    height: 12,
+    backgroundColor: theme.colors.borderLight,
+    borderRadius: 6,
   },
 });
 

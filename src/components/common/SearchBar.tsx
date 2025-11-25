@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, TextInput, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, TextInput, Text, StyleSheet, TouchableOpacity, ViewStyle, StyleProp } from 'react-native';
 import { theme } from '../../theme/theme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 interface SearchBarProps {
   placeholder?: string;
@@ -8,6 +9,7 @@ interface SearchBarProps {
   onChangeText: (text: string) => void;
   onSearch?: () => void;
   onFocus?: () => void;
+  style?: StyleProp<ViewStyle>;
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({
@@ -16,10 +18,12 @@ const SearchBar: React.FC<SearchBarProps> = ({
   onChangeText,
   onSearch,
   onFocus,
+  style,
 }) => {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, style]}>
       <View style={styles.searchContainer}>
+        <MaterialCommunityIcons name="magnify" size={20} color={theme.colors.placeholderLight} style={{ marginRight: 8 }} />
         <TextInput
           style={styles.input}
           placeholder={placeholder}
@@ -32,7 +36,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
         />
         {value.length > 0 && (
           <TouchableOpacity onPress={() => onChangeText('')} style={styles.clearButton}>
-            <Text style={styles.clearText}>✕</Text>
+            <MaterialCommunityIcons name="close-circle" size={16} color={theme.colors.placeholderLight} />
           </TouchableOpacity>
         )}
       </View>
@@ -42,19 +46,19 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    // Removed default horizontal padding to allow parent to control width/padding
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.backgroundLight,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.borderLight,
+    borderRadius: 12, // More modern radius
+    // borderWidth: 1, // Removed border for cleaner look
+    // borderColor: theme.colors.borderLight,
     paddingHorizontal: theme.spacing.md,
-    height: 48,
-    ...theme.shadows.sm,
+    height: 50,
+    // ...theme.shadows.sm, // Removed shadow for flatter look on white background
   },
   input: {
     flex: 1,
@@ -64,11 +68,6 @@ const styles = StyleSheet.create({
   clearButton: {
     padding: theme.spacing.xs,
   },
-  clearText: {
-    fontSize: theme.typography.fontSize.lg,
-    color: theme.colors.placeholderLight,
-  },
 });
 
 export default SearchBar;
-

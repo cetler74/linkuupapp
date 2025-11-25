@@ -38,7 +38,11 @@ const EmployeeSelectionScreen = () => {
       if (place) {
         // Get all employees for the place
         // The backend will filter by service availability when checking time slots
-        setEmployees(place.employees || []);
+        // Filter out any invalid employees (ensure they have required fields)
+        const validEmployees = (place.employees || []).filter(
+          (emp: PlaceEmployee) => emp && emp.id && (emp.name || emp.email)
+        );
+        setEmployees(validEmployees);
       } else {
         setEmployees([]);
       }
@@ -109,6 +113,8 @@ const EmployeeSelectionScreen = () => {
           {/* Employee Options */}
           {employees.map((employee) => {
             const isSelected = selectedEmployee === employee.id;
+            const employeeName = employee.name || 'Employee';
+            const employeeNameStr = typeof employeeName === 'string' ? employeeName : String(employeeName || 'Employee');
             const avatarUrl = (employee.photo_url || employee.avatar_url) ? getImageUrl(employee.photo_url || employee.avatar_url || '') : null;
             
             return (
@@ -124,12 +130,12 @@ const EmployeeSelectionScreen = () => {
                     ) : (
                       <View style={styles.employeeAvatar}>
                         <Text style={styles.employeeInitials}>
-                          {(employee.name || 'E')[0].toUpperCase()}
+                          {employeeNameStr[0]?.toUpperCase() || 'E'}
                         </Text>
                       </View>
                     )}
                     <View style={styles.employeeInfo}>
-                      <Text style={styles.employeeName}>{employee.name}</Text>
+                      <Text style={styles.employeeName}>{employeeNameStr}</Text>
                       {employee.role && (
                         <Text style={styles.employeeRole}>{employee.role}</Text>
                       )}

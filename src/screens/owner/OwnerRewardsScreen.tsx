@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl, Modal, Dimensions, StatusBar } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { ownerAPI, Place } from '../../api/api';
@@ -10,6 +10,8 @@ import Input from '../../components/ui/Input';
 import ToggleSwitch from '../../components/ui/ToggleSwitch';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Logo from '../../components/common/Logo';
+
+const { width } = Dimensions.get('window');
 
 interface RewardsConfig {
   calculation_method: 'volume_based' | 'fixed_per_booking';
@@ -89,13 +91,10 @@ const OwnerRewardsScreen = () => {
           },
         });
       }
-      // If response is null (404), keep default values already set in state
     } catch (error: any) {
-      // Only log non-404 errors
       if (error.response?.status !== 404) {
         console.error('Error fetching reward settings:', error);
       }
-      // Keep default values on error
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -130,7 +129,13 @@ const OwnerRewardsScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+
+      {/* Header Background with Curve */}
+      <View style={styles.headerBackground}>
+        <View style={styles.headerCurve} />
+      </View>
+
       <View style={styles.header}>
         <View style={styles.headerBranding}>
           <Logo width={32} height={32} color="#FFFFFF" animated={false} />
@@ -180,7 +185,12 @@ const OwnerRewardsScreen = () => {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#FFFFFF"
+              colors={[theme.colors.primary]}
+            />
           }
         >
           {/* Rewards Overview */}
@@ -197,25 +207,25 @@ const OwnerRewardsScreen = () => {
 
             <View style={styles.featuresList}>
               <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="check-circle" size={20} color="#10b981" />
+                <MaterialCommunityIcons name="check-circle" size={20} color={theme.colors.success} />
                 <Text style={styles.featureText}>
                   {t('rewards.pointsPerBooking') || 'Points per booking'}
                 </Text>
               </View>
               <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="check-circle" size={20} color="#10b981" />
+                <MaterialCommunityIcons name="check-circle" size={20} color={theme.colors.success} />
                 <Text style={styles.featureText}>
                   {t('rewards.tierBasedRewards') || 'Tier-based rewards'}
                 </Text>
               </View>
               <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="check-circle" size={20} color="#10b981" />
+                <MaterialCommunityIcons name="check-circle" size={20} color={theme.colors.success} />
                 <Text style={styles.featureText}>
                   {t('rewards.redemptionTracking') || 'Redemption tracking'}
                 </Text>
               </View>
               <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="check-circle" size={20} color="#10b981" />
+                <MaterialCommunityIcons name="check-circle" size={20} color={theme.colors.success} />
                 <Text style={styles.featureText}>
                   {t('rewards.customerAnalytics') || 'Customer analytics'}
                 </Text>
@@ -234,7 +244,7 @@ const OwnerRewardsScreen = () => {
                 {t('rewards.status') || 'Status'}
               </Text>
               <View style={[styles.statusBadge, config.is_active ? styles.statusActive : styles.statusInactive]}>
-                <Text style={styles.statusText}>
+                <Text style={[styles.statusText, config.is_active ? { color: theme.colors.success } : { color: theme.colors.placeholderLight }]}>
                   {config.is_active ? (t('common.active') || 'Active') : (t('common.inactive') || 'Inactive')}
                 </Text>
               </View>
@@ -276,7 +286,7 @@ const OwnerRewardsScreen = () => {
           onPress={() => setShowConfigModal(true)}
           activeOpacity={0.8}
         >
-          <MaterialCommunityIcons name="plus" size={28} color="#FFFFFF" />
+          <MaterialCommunityIcons name="pencil" size={28} color="#FFFFFF" />
         </TouchableOpacity>
       )}
 
@@ -455,14 +465,34 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.backgroundLight,
   },
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 180,
+    backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  headerCurve: {
+    position: 'absolute',
+    bottom: -50,
+    left: 0,
+    right: 0,
+    height: 100,
+    backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: width / 2,
+    borderBottomRightRadius: width / 2,
+    transform: [{ scaleX: 1.5 }],
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
   },
   headerBranding: {
     flexDirection: 'row',
@@ -476,8 +506,8 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    right: theme.spacing.md,
-    bottom: theme.spacing.md,
+    right: theme.spacing.lg,
+    bottom: theme.spacing.lg,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -491,33 +521,32 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   placeSelectorContainer: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderLight,
+    paddingVertical: theme.spacing.md,
   },
   placeSelectorContent: {
+    paddingHorizontal: theme.spacing.lg,
     gap: theme.spacing.sm,
   },
   placeChip: {
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: 8,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.backgroundLight,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderWidth: 1,
-    borderColor: theme.colors.borderLight,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   placeChipActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
   },
   placeChipText: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.medium,
-    color: theme.colors.textLight,
+    color: 'rgba(255,255,255,0.9)',
   },
   placeChipTextActive: {
-    color: '#FFFFFF',
+    color: theme.colors.primary,
+    fontWeight: theme.typography.fontWeight.bold,
   },
   loadingContainer: {
     flex: 1,
@@ -528,14 +557,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: theme.spacing.md,
+    padding: theme.spacing.lg,
+    paddingBottom: 80, // Space for FAB
   },
   overviewCard: {
     alignItems: 'center',
     padding: theme.spacing.xl,
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+    borderRadius: theme.borderRadius.xl,
+    ...theme.shadows.md,
   },
   iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: `${theme.colors.primary}10`,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: theme.spacing.md,
   },
   overviewTitle: {
@@ -553,20 +591,25 @@ const styles = StyleSheet.create({
   },
   featuresList: {
     width: '100%',
-    marginBottom: theme.spacing.lg,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: theme.spacing.sm,
+    backgroundColor: theme.colors.backgroundLight,
+    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
   },
   featureText: {
-    fontSize: theme.typography.fontSize.base,
+    fontSize: theme.typography.fontSize.sm,
     color: theme.colors.textLight,
     marginLeft: theme.spacing.sm,
+    fontWeight: theme.typography.fontWeight.medium,
   },
   settingsCard: {
-    padding: theme.spacing.md,
+    padding: theme.spacing.lg,
+    borderRadius: theme.borderRadius.xl,
+    ...theme.shadows.md,
   },
   settingsTitle: {
     fontSize: theme.typography.fontSize.lg,
@@ -578,7 +621,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderLight,
   },
@@ -588,24 +631,23 @@ const styles = StyleSheet.create({
   },
   settingValue: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.medium,
+    fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.primary,
   },
   statusBadge: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 4,
     borderRadius: theme.borderRadius.full,
   },
   statusActive: {
-    backgroundColor: '#10b98120',
+    backgroundColor: `${theme.colors.success}20`,
   },
   statusInactive: {
     backgroundColor: theme.colors.borderLight,
   },
   statusText: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.medium,
-    color: theme.colors.textLight,
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold,
   },
   modalOverlay: {
     flex: 1,
@@ -614,8 +656,8 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: theme.colors.backgroundLight,
-    borderTopLeftRadius: theme.borderRadius.xl,
-    borderTopRightRadius: theme.borderRadius.xl,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '90%',
     paddingBottom: theme.spacing.lg,
   },
@@ -623,7 +665,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: theme.spacing.md,
+    padding: theme.spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.borderLight,
   },
@@ -634,10 +676,10 @@ const styles = StyleSheet.create({
   },
   modalScrollView: {
     maxHeight: 500,
-    padding: theme.spacing.md,
+    padding: theme.spacing.lg,
   },
   modalSection: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
   },
   modalSectionTitle: {
     fontSize: theme.typography.fontSize.base,
@@ -649,19 +691,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
   },
   toggleLabel: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.textLight,
     flex: 1,
+    fontWeight: theme.typography.fontWeight.medium,
   },
   optionButton: {
     padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
+    borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
     borderColor: theme.colors.borderLight,
     marginBottom: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
   },
   optionButtonActive: {
     borderColor: theme.colors.primary,
@@ -678,13 +726,13 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    padding: theme.spacing.md,
+    padding: theme.spacing.lg,
     borderTopWidth: 1,
     borderTopColor: theme.colors.borderLight,
+    gap: theme.spacing.md,
   },
   modalButton: {
     flex: 1,
-    marginHorizontal: theme.spacing.xs,
   },
 });
 

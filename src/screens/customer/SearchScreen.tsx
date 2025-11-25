@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Dimensions, StatusBar } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { placeAPI, type Place } from '../../api/api';
@@ -8,6 +8,8 @@ import SearchBar from '../../components/common/SearchBar';
 import PlaceCard from '../../components/common/PlaceCard';
 import Card from '../../components/ui/Card';
 import Logo from '../../components/common/Logo';
+
+const { width } = Dimensions.get('window');
 
 const SearchScreen = () => {
   const { t } = useTranslation();
@@ -78,56 +80,64 @@ const SearchScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerBranding}>
-          <Logo width={32} height={32} color="#FFFFFF" animated={false} />
-          <Text style={styles.headerTitle}>{t('nav.search') || 'Search'}</Text>
-        </View>
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+
+      {/* Header Background with Curve */}
+      <View style={styles.headerBackground}>
+        <View style={styles.headerCurve} />
       </View>
 
-      {/* Search Bar */}
-      <SearchBar
-        placeholder={t('nav.searchPlaceholder') || 'Search for services or businesses...'}
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        onSearch={performSearch}
-      />
+      {/* Header Content */}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerBranding}>
+            <Logo width={32} height={32} color="#FFFFFF" animated={false} />
+            <Text style={styles.headerTitle}>{t('nav.search') || 'Search'}</Text>
+          </View>
+        </View>
 
-      {/* Quick Filters */}
-      <View style={styles.filtersContainer}>
-        <FlatList
-          data={quickFilters}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[
-                styles.filterChip,
-                activeFilter === item.id && styles.filterChipActive,
-              ]}
-              onPress={() => handleFilterPress(item.id)}
-            >
-              <Text
+        {/* Search Bar */}
+        <View style={styles.searchWrapper}>
+          <SearchBar
+            placeholder={t('nav.searchPlaceholder') || 'Search for services or businesses...'}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSearch={performSearch}
+          />
+        </View>
+
+        {/* Quick Filters */}
+        <View style={styles.filtersContainer}>
+          <FlatList
+            data={quickFilters}
+            renderItem={({ item }) => (
+              <TouchableOpacity
                 style={[
-                  styles.filterChipText,
-                  activeFilter === item.id && styles.filterChipTextActive,
+                  styles.filterChip,
+                  activeFilter === item.id && styles.filterChipActive,
                 ]}
+                onPress={() => handleFilterPress(item.id)}
               >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          )}
-          keyExtractor={(item) => item.id}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersList}
-        />
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    activeFilter === item.id && styles.filterChipTextActive,
+                  ]}
+                >
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            )}
+            keyExtractor={(item) => item.id}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtersList}
+          />
+        </View>
       </View>
 
       {/* Results */}
       <View style={styles.resultsContainer}>
-        <Text style={styles.resultsTitle}>
-          {t('search.popularNearby') || 'Popular Nearby'}
-        </Text>
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -144,7 +154,7 @@ const SearchScreen = () => {
           <FlatList
             data={searchResults}
             renderItem={({ item }) => (
-              <PlaceCard place={item} onPress={() => handlePlacePress(item)} />
+              <PlaceCard place={item} onPress={() => handlePlacePress(item)} variant="large" />
             )}
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={styles.resultsList}
@@ -170,14 +180,37 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.backgroundLight,
   },
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 240,
+    backgroundColor: theme.colors.primary,
+    zIndex: 0,
+  },
+  headerCurve: {
+    position: 'absolute',
+    bottom: -50,
+    left: 0,
+    right: 0,
+    height: 100,
+    backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: width / 2,
+    borderBottomRightRadius: width / 2,
+    transform: [{ scaleX: 1.5 }],
+  },
   header: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
+    zIndex: 1,
+  },
+  headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.lg,
   },
   headerBranding: {
     flexDirection: 'row',
@@ -189,11 +222,13 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight.bold,
     color: '#FFFFFF',
   },
+  searchWrapper: {
+    marginBottom: theme.spacing.lg,
+  },
   filtersContainer: {
     paddingVertical: theme.spacing.sm,
   },
   filtersList: {
-    paddingHorizontal: theme.spacing.md,
     gap: theme.spacing.sm,
   },
   filterChip: {

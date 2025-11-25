@@ -1,16 +1,21 @@
 // Theme extracted from design screens
 export const theme = {
   colors: {
-    primary: '#3b82f6', // Vibrant Blue
-    secondary: '#ef4444', // Red
-    backgroundLight: '#ffffff',
-    backgroundDark: '#0f1723',
+    primary: '#3b82f6', // Brand Blue
+    secondary: '#03DAC6', // Teal
+    backgroundLight: '#F5F7FA', // Light Blue-Grey
+    backgroundDark: '#121212',
+    surface: '#FFFFFF',
     textLight: '#1f2937',
     textDark: '#f8fafc',
-    borderLight: '#d1d5db',
+    borderLight: '#e5e7eb',
     borderDark: '#334155',
-    placeholderLight: '#6b7280',
+    placeholderLight: '#9ca3af',
     placeholderDark: '#94a3b8',
+    success: '#10B981',
+    warning: '#F59E0B',
+    info: '#3B82F6',
+    error: '#EF4444',
   },
   typography: {
     fontFamily: {
@@ -32,7 +37,7 @@ export const theme = {
       medium: '500',
       bold: '700',
       extrabold: '800',
-    },
+    } as const,
   },
   spacing: {
     xs: 4,

@@ -4,6 +4,11 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Calendar } from 'react-native-calendars';
 import { placeAPI, bookingAPI, type AvailabilityResponse } from '../../api/api';
+
+interface TimeSlot {
+  time: string;
+  available: boolean;
+}
 import { scheduleBookingReminder } from '../../services/notifications';
 import { theme } from '../../theme/theme';
 import Button from '../../components/ui/Button';
@@ -18,7 +23,7 @@ const DateTimeSelectionScreen = () => {
   
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [markedDates, setMarkedDates] = useState<any>({});
 
@@ -46,11 +51,25 @@ const DateTimeSelectionScreen = () => {
         selectedEmployee || undefined
       );
       
-      const slots = availability.available_slots || [];
-      setAvailableSlots(slots);
+      // Use time_slots if available (includes booked slots), otherwise fallback to available_slots
+      if (availability.time_slots && availability.time_slots.length > 0) {
+        // Filter out invalid slots (ensure time is a string)
+        const validSlots = availability.time_slots.filter(
+          (slot: any) => slot && slot.time && typeof slot.time === 'string'
+        );
+        setTimeSlots(validSlots);
+      } else {
+        // Fallback: convert available_slots to TimeSlot format
+        const slots = availability.available_slots || [];
+        // Filter out invalid times and ensure they're strings
+        const validSlots = slots
+          .filter((time: any) => time && typeof time === 'string')
+          .map((time: string) => ({ time, available: true }));
+        setTimeSlots(validSlots);
+      }
     } catch (error) {
       console.error('Error fetching availability:', error);
-      setAvailableSlots([]);
+      setTimeSlots([]);
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +81,11 @@ const DateTimeSelectionScreen = () => {
   };
 
   const handleTimeSelect = (time: string) => {
-    setSelectedTime(time);
+    // Only allow selection of available slots
+    const slot = timeSlots.find(s => s.time === time);
+    if (slot && slot.available) {
+      setSelectedTime(time);
+    }
   };
 
   const handleContinue = async () => {
@@ -130,8 +153,15 @@ const DateTimeSelectionScreen = () => {
     }
   };
 
-  const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':');
+  const formatTime = (time: string | undefined | null) => {
+    if (!time || typeof time !== 'string') {
+      return '';
+    }
+    const parts = time.split(':');
+    if (parts.length < 2) {
+      return time; // Return as-is if format is unexpected
+    }
+    const [hours, minutes] = parts;
     return `${hours}:${minutes}`;
   };
 
@@ -181,28 +211,42 @@ const DateTimeSelectionScreen = () => {
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="small" color={theme.colors.primary} />
               </View>
-            ) : availableSlots.length > 0 ? (
+            ) : timeSlots.length > 0 ? (
               <View style={styles.timeSlotsGrid}>
-                {availableSlots.map((time) => {
-                  const isSelected = selectedTime === time;
-                  return (
-                    <TouchableOpacity
-                      key={time}
-                      style={[styles.timeSlot, isSelected && styles.timeSlotSelected]}
-                      onPress={() => handleTimeSelect(time)}
-                      activeOpacity={0.7}
-                    >
-                      <Text
+                {timeSlots
+                  .filter((slot) => slot && slot.time) // Filter out invalid slots
+                  .map((slot) => {
+                    const isSelected = selectedTime === slot.time;
+                    const isBooked = !slot.available;
+                    return (
+                      <TouchableOpacity
+                        key={slot.time}
                         style={[
-                          styles.timeSlotText,
-                          isSelected && styles.timeSlotTextSelected,
+                          styles.timeSlot,
+                          isSelected && styles.timeSlotSelected,
+                          isBooked && styles.timeSlotBooked,
                         ]}
+                        onPress={() => handleTimeSelect(slot.time)}
+                        activeOpacity={isBooked ? 1 : 0.7}
+                        disabled={isBooked}
                       >
-                        {formatTime(time)}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                        <Text
+                          style={[
+                            styles.timeSlotText,
+                            isSelected && styles.timeSlotTextSelected,
+                            isBooked && styles.timeSlotTextBooked,
+                          ]}
+                        >
+                          {formatTime(slot.time)}
+                        </Text>
+                        {isBooked && (
+                          <Text style={styles.bookedLabel}>
+                            {t('booking.booked') || 'Booked'}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
               </View>
             ) : (
               <View style={styles.emptyContainer}>
@@ -319,6 +363,21 @@ const styles = StyleSheet.create({
   },
   timeSlotTextSelected: {
     color: '#FFFFFF',
+  },
+  timeSlotBooked: {
+    backgroundColor: theme.colors.backgroundLight,
+    borderColor: theme.colors.borderLight,
+    opacity: 0.5,
+  },
+  timeSlotTextBooked: {
+    color: theme.colors.placeholderLight,
+    textDecorationLine: 'line-through',
+  },
+  bookedLabel: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.error || '#FF3B30',
+    fontWeight: theme.typography.fontWeight.medium,
+    marginTop: 2,
   },
   loadingContainer: {
     padding: theme.spacing.xl,

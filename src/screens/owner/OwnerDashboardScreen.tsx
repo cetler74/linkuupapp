@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, StatusBar, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -9,6 +9,8 @@ import Card from '../../components/ui/Card';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Logo from '../../components/common/Logo';
+
+const { width } = Dimensions.get('window');
 
 interface DashboardStats {
   registered_places: number;
@@ -29,6 +31,14 @@ interface RecentBooking {
   booking_time?: string;
   status: string;
   place_name: string;
+}
+
+interface QuickAction {
+  id: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  label: string;
+  color: string;
+  onPress: () => void;
 }
 
 const OwnerDashboardScreen = () => {
@@ -59,7 +69,7 @@ const OwnerDashboardScreen = () => {
       setIsLoading(true);
       const statsData = await ownerAPI.getDashboardStats();
       setStats(statsData);
-      
+
       // Fetch recent bookings
       const bookingsData = await ownerAPI.getRecentBookings(10);
       setRecentBookings(Array.isArray(bookingsData) ? bookingsData : []);
@@ -76,25 +86,30 @@ const OwnerDashboardScreen = () => {
     fetchDashboardData();
   };
 
-  const formatDate = (dateString: string | undefined, timeString: string | undefined) => {
-    if (!dateString) return '';
-    const date = timeString ? new Date(`${dateString}T${timeString}`) : new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
   const formatTime = (timeString: string | undefined) => {
     if (!timeString) return '';
     const [hours, minutes] = timeString.split(':');
     return `${hours}:${minutes}`;
   };
 
-  const quickActions = [
+  const handleManageServices = async () => {
+    try {
+      const places = await ownerAPI.getOwnerPlaces();
+      if (places.length > 0) {
+        navigation.navigate('ServicesManagement' as never, { placeId: places[0].id } as never);
+      } else {
+        navigation.navigate('Places' as never);
+      }
+    } catch (error) {
+      console.error('Error fetching places:', error);
+      navigation.navigate('Places' as never);
+    }
+  };
+
+  const quickActions: QuickAction[] = [
     {
       id: 'new-booking',
-      icon: 'plus-circle',
+      icon: 'calendar-plus',
       label: t('dashboard.newBooking') || 'New Booking',
       color: theme.colors.primary,
       onPress: () => navigation.navigate('Bookings' as never),
@@ -102,23 +117,23 @@ const OwnerDashboardScreen = () => {
     {
       id: 'manage-services',
       icon: 'content-cut',
-      label: t('dashboard.manageServices') || 'Manage Services',
-      color: theme.colors.secondary,
-      onPress: () => navigation.navigate('Places' as never),
+      label: t('dashboard.manageServices') || 'Services',
+      color: theme.colors.secondary, // Teal
+      onPress: handleManageServices,
     },
     {
       id: 'view-calendar',
       icon: 'calendar-month',
-      label: t('dashboard.viewCalendar') || 'View Calendar',
-      color: theme.colors.textLight,
+      label: t('dashboard.viewCalendar') || 'Calendar',
+      color: theme.colors.warning, // Amber/Orange
       onPress: () => navigation.navigate('Bookings' as never),
     },
     {
       id: 'manage-staff',
       icon: 'account-group',
-      label: t('dashboard.manageStaff') || 'Manage Staff',
-      color: theme.colors.textLight,
-      onPress: () => navigation.navigate('Places' as never),
+      label: t('dashboard.manageStaff') || 'Staff',
+      color: '#E91E63', // Pink
+      onPress: () => navigation.navigate('Staff' as never),
     },
   ];
 
@@ -131,173 +146,213 @@ const OwnerDashboardScreen = () => {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-      }
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerBranding}>
-          <Logo width={32} height={32} color="#FFFFFF" animated={false} />
-          <Text style={styles.headerTitle}>
-            {t('dashboard.title') || 'Dashboard'}
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={styles.headerRight}
-          onPress={() => navigation.navigate('Notifications' as never)}
-        >
-          <View style={styles.notificationIconContainer}>
-            <MaterialCommunityIcons name="bell-outline" size={24} color="#FFFFFF" />
-            {unreadCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </Text>
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+
+      {/* Header Background with Curve */}
+      <View style={styles.headerBackground}>
+        <View style={styles.headerCurve} />
       </View>
 
-      {/* Welcome Section */}
-      <View style={styles.welcomeSection}>
-        <Text style={styles.welcomeTitle}>
-          {t('dashboard.welcomeBack', { name: user?.first_name || 'Owner' }) || `Welcome back, ${user?.first_name || 'Owner'}!`}
-        </Text>
-        <Text style={styles.welcomeSubtitle}>
-          {t('dashboard.businessSummary') || 'Here is your business summary for today.'}
-        </Text>
-      </View>
-
-      {/* Stats Cards */}
       <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.statsContainer}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#FFFFFF"
+            colors={[theme.colors.primary]}
+          />
+        }
+        showsVerticalScrollIndicator={false}
       >
-        <Card style={styles.statCard}>
-          <Text style={styles.statLabel}>
-            {t('dashboard.todayBookings') || "Today's Bookings"}
-          </Text>
-          <Text style={styles.statValue}>{stats.today_bookings || stats.total_bookings}</Text>
-          <View style={styles.statChange}>
-            <MaterialCommunityIcons name="arrow-up" size={16} color="#10b981" />
-            <Text style={styles.statChangeText}>+5.2%</Text>
-          </View>
-        </Card>
-        <Card style={styles.statCard}>
-          <Text style={styles.statLabel}>
-            {t('dashboard.totalRevenue') || 'Total Revenue'}
-          </Text>
-          <Text style={styles.statValue}>
-            €{stats.total_revenue?.toFixed(0) || '0'}
-          </Text>
-          <View style={styles.statChange}>
-            <MaterialCommunityIcons name="arrow-up" size={16} color="#10b981" />
-            <Text style={styles.statChangeText}>+8.1%</Text>
-          </View>
-        </Card>
-        <Card style={styles.statCard}>
-          <Text style={styles.statLabel}>
-            {t('dashboard.newClients') || 'New Clients'}
-          </Text>
-          <Text style={styles.statValue}>{stats.new_clients || stats.active_customers}</Text>
-          <View style={styles.statChange}>
-            <MaterialCommunityIcons name="arrow-down" size={16} color="#ef4444" />
-            <Text style={[styles.statChangeText, { color: '#ef4444' }]}>-1.5%</Text>
-          </View>
-        </Card>
-      </ScrollView>
-
-      {/* Quick Actions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          {t('dashboard.quickActions') || 'Quick Actions'}
-        </Text>
-        <View style={styles.quickActionsGrid}>
-          {quickActions.map((action) => (
+        {/* Header Content */}
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <View style={styles.headerBranding}>
+              <Logo width={32} height={32} color="#FFFFFF" animated={false} />
+              <Text style={styles.headerTitle}>Linkuup</Text>
+            </View>
             <TouchableOpacity
-              key={action.id}
-              style={[
-                styles.quickActionCard,
-                action.color === theme.colors.primary && styles.quickActionPrimary,
-                action.color === theme.colors.secondary && styles.quickActionSecondary,
-              ]}
-              onPress={action.onPress}
+              style={styles.notificationButton}
+              onPress={() => navigation.navigate('Notifications' as never)}
             >
-              <MaterialCommunityIcons
-                name={action.icon as any}
-                size={32}
-                color={action.color === theme.colors.textLight ? theme.colors.textLight : '#FFFFFF'}
-              />
-              <Text
-                style={[
-                  styles.quickActionLabel,
-                  action.color !== theme.colors.textLight && styles.quickActionLabelWhite,
-                ]}
-              >
-                {action.label}
-              </Text>
+              <MaterialCommunityIcons name="bell-outline" size={24} color="#FFFFFF" />
+              {unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
-          ))}
-        </View>
-      </View>
+          </View>
 
-      {/* Upcoming Bookings */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {t('dashboard.upcomingBookings') || 'Upcoming Bookings'}
-          </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Bookings' as never)}>
-            <Text style={styles.seeAllText}>{t('common.viewAll') || 'View All'}</Text>
-          </TouchableOpacity>
-        </View>
-        {recentBookings.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <Text style={styles.emptyText}>
-              {t('dashboard.noUpcomingBookings') || 'No upcoming bookings'}
+          <View style={styles.welcomeContainer}>
+            <Text style={styles.welcomeText}>
+              {t('dashboard.welcomeBack', { name: user?.name || 'Owner' }) || `Hello, ${user?.name || 'Owner'}!`}
             </Text>
-          </Card>
-        ) : (
-          recentBookings.slice(0, 5).map((booking) => (
-            <TouchableOpacity
-              key={booking.id}
-              onPress={() => navigation.navigate('BookingDetails' as never, { bookingId: booking.id } as never)}
-            >
-              <Card style={styles.bookingCard}>
-                <View style={styles.bookingContent}>
+            <Text style={styles.dateText}>
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </Text>
+          </View>
+        </View>
+
+        {/* Stats Cards - Floating Overlap */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.statsScrollContent}
+          style={styles.statsContainer}
+        >
+          <View style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
+            <View style={[styles.statIconContainer, { backgroundColor: `${theme.colors.success}15` }]}>
+              <MaterialCommunityIcons name="calendar-check" size={24} color={theme.colors.success} />
+            </View>
+            <Text style={styles.statLabel}>
+              {t('dashboard.todayBookings') || "Today's Bookings"}
+            </Text>
+            <Text style={styles.statValue}>{stats.today_bookings || stats.total_bookings}</Text>
+            <View style={styles.statFooter}>
+              <Text style={[styles.statTrend, { color: theme.colors.success }]}>
+                <MaterialCommunityIcons name="arrow-up" size={14} /> 5.2%
+              </Text>
+              <Text style={styles.statPeriod}>vs last week</Text>
+            </View>
+          </View>
+
+          <View style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
+            <View style={[styles.statIconContainer, { backgroundColor: `${theme.colors.info}15` }]}>
+              <MaterialCommunityIcons name="currency-eur" size={24} color={theme.colors.info} />
+            </View>
+            <Text style={styles.statLabel}>
+              {t('dashboard.totalRevenue') || 'Total Revenue'}
+            </Text>
+            <Text style={styles.statValue}>
+              €{stats.total_revenue?.toFixed(0) || '0'}
+            </Text>
+            <View style={styles.statFooter}>
+              <Text style={[styles.statTrend, { color: theme.colors.info }]}>
+                <MaterialCommunityIcons name="arrow-up" size={14} /> 8.1%
+              </Text>
+              <Text style={styles.statPeriod}>vs last month</Text>
+            </View>
+          </View>
+
+          <View style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
+            <View style={[styles.statIconContainer, { backgroundColor: `${theme.colors.error}15` }]}>
+              <MaterialCommunityIcons name="account-multiple" size={24} color={theme.colors.error} />
+            </View>
+            <Text style={styles.statLabel}>
+              {t('dashboard.newClients') || 'New Clients'}
+            </Text>
+            <Text style={styles.statValue}>{stats.new_clients || stats.active_customers}</Text>
+            <View style={styles.statFooter}>
+              <Text style={[styles.statTrend, { color: theme.colors.error }]}>
+                <MaterialCommunityIcons name="arrow-down" size={14} /> 1.5%
+              </Text>
+              <Text style={styles.statPeriod}>vs last week</Text>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            {t('dashboard.quickActions') || 'Quick Actions'}
+          </Text>
+          <View style={styles.quickActionsGrid}>
+            {quickActions.map((action) => (
+              <TouchableOpacity
+                key={action.id}
+                style={styles.quickActionCard}
+                onPress={action.onPress}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: `${action.color}15` }]}>
+                  <MaterialCommunityIcons
+                    name={action.icon}
+                    size={28}
+                    color={action.color}
+                  />
+                </View>
+                <Text style={styles.quickActionLabel}>{action.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Upcoming Bookings */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>
+              {t('dashboard.upcomingBookings') || 'Upcoming Bookings'}
+            </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Bookings' as never)}>
+              <Text style={styles.seeAllText}>{t('common.viewAll') || 'View All'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {recentBookings.length === 0 ? (
+            <Card style={styles.emptyCard}>
+              <MaterialCommunityIcons name="calendar-blank" size={48} color={theme.colors.placeholderLight} />
+              <Text style={styles.emptyText}>
+                {t('dashboard.noUpcomingBookings') || 'No upcoming bookings'}
+              </Text>
+            </Card>
+          ) : (
+            <View style={styles.bookingsList}>
+              {recentBookings.slice(0, 5).map((booking) => (
+                <TouchableOpacity
+                  key={booking.id}
+                  style={styles.bookingItem}
+                  onPress={() => navigation.navigate('BookingDetails' as never, { bookingId: booking.id } as never)}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.bookingDateBox}>
-                    <Text style={styles.bookingMonth}>
-                      {new Date(booking.booking_date).toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
-                    </Text>
                     <Text style={styles.bookingDay}>
                       {new Date(booking.booking_date).getDate()}
                     </Text>
-                  </View>
-                  <View style={styles.bookingInfo}>
-                    <Text style={styles.bookingTime}>
-                      {booking.booking_time ? `${formatTime(booking.booking_time)} - ` : ''}{booking.service_name}
-                    </Text>
-                    <Text style={styles.bookingCustomer}>
-                      {t('dashboard.with') || 'with'} {booking.customer_name}
+                    <Text style={styles.bookingMonth}>
+                      {new Date(booking.booking_date).toLocaleDateString('en-US', { month: 'short' })}
                     </Text>
                   </View>
+
+                  <View style={styles.bookingContent}>
+                    <Text style={styles.bookingService} numberOfLines={1}>
+                      {booking.service_name}
+                    </Text>
+                    <Text style={styles.bookingCustomer} numberOfLines={1}>
+                      {booking.customer_name}
+                    </Text>
+                    <View style={styles.bookingMeta}>
+                      <MaterialCommunityIcons name="clock-outline" size={14} color={theme.colors.placeholderLight} />
+                      <Text style={styles.bookingTime}>
+                        {booking.booking_time ? formatTime(booking.booking_time) : 'TBD'}
+                      </Text>
+                      <View style={styles.dotSeparator} />
+                      <Text style={[
+                        styles.bookingStatus,
+                        { color: booking.status === 'confirmed' ? theme.colors.success : theme.colors.placeholderLight }
+                      ]}>
+                        {booking.status}
+                      </Text>
+                    </View>
+                  </View>
+
                   <MaterialCommunityIcons
                     name="chevron-right"
-                    size={24}
+                    size={20}
                     color={theme.colors.placeholderLight}
                   />
-                </View>
-              </Card>
-            </TouchableOpacity>
-          ))
-        )}
-      </View>
-    </ScrollView>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </View>
   );
 };
 
@@ -310,114 +365,162 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: theme.colors.backgroundLight,
+  },
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 240,
+    backgroundColor: theme.colors.primary,
+    zIndex: 0,
+  },
+  headerCurve: {
+    position: 'absolute',
+    bottom: -50,
+    left: 0,
+    right: 0,
+    height: 100,
+    backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: width / 2,
+    borderBottomRightRadius: width / 2,
+    transform: [{ scaleX: 1.5 }],
+  },
+  scrollView: {
+    flex: 1,
+    zIndex: 1,
+  },
+  scrollContent: {
+    paddingBottom: theme.spacing.xl,
   },
   header: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
+  },
+  headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
+    marginBottom: theme.spacing.lg,
   },
   headerBranding: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
-    flex: 1,
   },
   headerTitle: {
     fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
     color: '#FFFFFF',
   },
-  headerRight: {
-    width: 48,
-    alignItems: 'flex-end',
-  },
-  notificationIconContainer: {
-    position: 'relative',
+  notificationButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   badge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
+    top: 0,
+    right: 0,
     backgroundColor: theme.colors.secondary,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: 10,
     minWidth: 18,
     height: 18,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
   },
   badgeText: {
-    fontSize: theme.typography.fontSize.xs,
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: theme.colors.textLight,
+  },
+  welcomeContainer: {
+    marginTop: theme.spacing.xs,
+  },
+  welcomeText: {
+    fontSize: 26,
     fontWeight: theme.typography.fontWeight.bold,
     color: '#FFFFFF',
+    marginBottom: 4,
   },
-  welcomeSection: {
-    paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.sm,
-  },
-  welcomeTitle: {
-    fontSize: 28,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textLight,
-    marginBottom: theme.spacing.xs,
-  },
-  welcomeSubtitle: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.placeholderLight,
-    marginBottom: theme.spacing.sm,
+  dateText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: 'rgba(255,255,255,0.8)',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   statsContainer: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    gap: theme.spacing.sm,
+    marginTop: -theme.spacing.xl,
+    paddingBottom: theme.spacing.md,
+  },
+  statsScrollContent: {
+    paddingHorizontal: theme.spacing.lg,
+    gap: theme.spacing.md,
   },
   statCard: {
-    minWidth: 160,
+    width: 160,
     padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.xl,
+    ...theme.shadows.md,
+  },
+  statIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.sm,
   },
   statLabel: {
-    fontSize: theme.typography.fontSize.sm,
+    fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.placeholderLight,
-    marginBottom: theme.spacing.xs,
+    marginBottom: 4,
   },
   statValue: {
-    fontSize: theme.typography.fontSize['3xl'],
+    fontSize: 22,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.textLight,
     marginBottom: theme.spacing.xs,
   },
-  statChange: {
+  statFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.xs,
+    gap: 6,
   },
-  statChangeText: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.medium,
-    color: '#10b981',
+  statTrend: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statPeriod: {
+    fontSize: 10,
+    color: theme.colors.placeholderLight,
   },
   section: {
-    paddingHorizontal: theme.spacing.md,
-    marginTop: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.xl,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   sectionTitle: {
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.textLight,
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   seeAllText: {
     fontSize: theme.typography.fontSize.sm,
@@ -427,81 +530,104 @@ const styles = StyleSheet.create({
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.md,
   },
   quickActionCard: {
-    width: '48%',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: '47%',
+    backgroundColor: theme.colors.surface,
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.xl,
-    backgroundColor: theme.colors.backgroundLight,
-    borderWidth: 1,
-    borderColor: theme.colors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: theme.spacing.sm,
     ...theme.shadows.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
   },
-  quickActionPrimary: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  quickActionSecondary: {
-    backgroundColor: theme.colors.secondary,
-    borderColor: theme.colors.secondary,
+  quickActionIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
   quickActionLabel: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.textLight,
-    textAlign: 'center',
   },
-  quickActionLabelWhite: {
-    color: '#FFFFFF',
+  bookingsList: {
+    gap: theme.spacing.sm,
   },
-  bookingCard: {
-    marginBottom: theme.spacing.sm,
-  },
-  bookingContent: {
+  bookingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    ...theme.shadows.sm,
   },
   bookingDateBox: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    minWidth: 60,
-  },
-  bookingMonth: {
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: '#FFFFFF',
-    textTransform: 'uppercase',
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: 12,
+    width: 50,
+    height: 50,
+    marginRight: theme.spacing.md,
   },
   bookingDay: {
-    fontSize: theme.typography.fontSize['2xl'],
-    fontWeight: theme.typography.fontWeight.bold,
-    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.colors.textLight,
   },
-  bookingInfo: {
+  bookingMonth: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: theme.colors.placeholderLight,
+    textTransform: 'uppercase',
+  },
+  bookingContent: {
     flex: 1,
+    gap: 4,
   },
-  bookingTime: {
+  bookingService: {
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.textLight,
-    marginBottom: theme.spacing.xs,
   },
   bookingCustomer: {
     fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.textLight,
+  },
+  bookingMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  bookingTime: {
+    fontSize: 12,
     color: theme.colors.placeholderLight,
   },
+  dotSeparator: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: theme.colors.placeholderLight,
+  },
+  bookingStatus: {
+    fontSize: 12,
+    fontWeight: theme.typography.fontWeight.medium,
+    textTransform: 'capitalize',
+  },
   emptyCard: {
-    padding: theme.spacing.xl,
     alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.xl,
+    gap: theme.spacing.md,
   },
   emptyText: {
     fontSize: theme.typography.fontSize.base,

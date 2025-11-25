@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, StatusBar, Platform, Dimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { placeAPI, type Place } from '../../api/api';
 import { theme } from '../../theme/theme';
 import SearchBar from '../../components/common/SearchBar';
 import PlaceCard from '../../components/common/PlaceCard';
-import Button from '../../components/ui/Button';
-import Card from '../../components/ui/Card';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useAuth } from '../../contexts/AuthContext';
 import Logo from '../../components/common/Logo';
+
+const { width } = Dimensions.get('window');
 
 const HomeScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const { user } = useAuth();
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [featuredPlaces, setFeaturedPlaces] = useState<Place[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,171 +56,138 @@ const HomeScreen = () => {
     fetchFeaturedPlaces();
   };
 
-  const keyHighlights = [
-    {
-      icon: '📅',
-      title: t('home.flexibleBookingSystem'),
-      description: t('home.flexibleBookingDesc'),
-      color: theme.colors.primary,
-    },
-    {
-      icon: '💳',
-      title: t('home.instantPayments'),
-      description: t('home.instantPaymentsDesc'),
-      color: '#10b981',
-    },
-    {
-      icon: '🔄',
-      title: t('home.realtimeSync'),
-      description: t('home.realtimeSyncDesc'),
-      color: theme.colors.secondary,
-    },
+  const categories = [
+    { id: 'all', name: t('common.all') || 'All', icon: 'view-grid', color: theme.colors.primary },
+    { id: 'beauty', name: t('home.beauty') || 'Beauty', icon: 'lipstick', color: '#E91E63' }, // Pink
+    { id: 'wellness', name: t('home.wellness') || 'Wellness', icon: 'spa', color: '#10B981' }, // Emerald
+    { id: 'fitness', name: t('home.fitness') || 'Fitness', icon: 'dumbbell', color: '#F59E0B' }, // Amber
+    { id: 'food', name: t('home.food') || 'Food & Drink', icon: 'food', color: '#EF4444' }, // Red
   ];
 
-  const serviceCategories = [
-    { icon: '💇', name: t('home.beauty') || 'Beauty' },
-    { icon: '💆', name: t('home.wellness') || 'Wellness' },
-    { icon: '💪', name: t('home.fitness') || 'Fitness' },
-    { icon: '🏥', name: t('home.medical') || 'Medical' },
-  ];
+  const handleCategoryPress = (category: any) => {
+    if (category.id === 'all') {
+      navigation.navigate('Search' as never);
+    } else {
+      navigation.navigate('Search' as never, { tipo: category.name } as never);
+    }
+  };
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-      }
-    >
-      {/* Header Section */}
-      <View style={styles.header}>
-        <View style={styles.headerBranding}>
-          <Logo width={32} height={32} color="#FFFFFF" animated={false} />
-          <Text style={styles.headerTitle}>
-            {t('nav.home') || 'Home'}
-          </Text>
-        </View>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+
+      {/* Header Background with Curve */}
+      <View style={styles.headerBackground}>
+        <View style={styles.headerCurve} />
       </View>
-
-      {/* Search Bar */}
-      <SearchBar
-        placeholder={t('nav.searchPlaceholder') || 'Search for services or businesses'}
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        onSearch={handleSearch}
-        onFocus={() => navigation.navigate('Search' as never)}
-      />
-
-      {/* Hero Section */}
-      <View style={styles.heroSection}>
-        <Text style={styles.heroTitle}>{t('home.heroTitle') || 'Discover the best professionals'}</Text>
-        <Text style={styles.heroSubtitle}>
-          {t('home.heroSubtitle') || 'Beauty | Wellness | Style'}
-        </Text>
-        <Text style={styles.heroDescription}>
-          {t('home.heroDescription') || 'Book fast and easy'}
-        </Text>
-        <View style={styles.heroButtons}>
-          <Button
-            title={t('home.getStartedToday') || 'Get Started'}
-            onPress={() => navigation.navigate('Search' as never)}
-            variant="primary"
-            size="md"
-            style={styles.heroButton}
+      
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={handleRefresh}
+            tintColor="#FFFFFF"
+            colors={[theme.colors.primary]}
           />
-        </View>
-      </View>
-
-      {/* Service Categories */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('home.exploreServices') || 'Explore Services'}</Text>
-        <View style={styles.categoriesContainer}>
-          {serviceCategories.map((category, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.categoryCard}
-              onPress={() => navigation.navigate('Search' as never, { tipo: category.name } as never)}
-            >
-              <Text style={styles.categoryIcon}>{category.icon}</Text>
-              <Text style={styles.categoryName}>{category.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Featured Businesses */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {t('home.featuredBusinesses') || 'Featured Businesses'}
-          </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Search' as never)}>
-            <Text style={styles.seeAllText}>{t('common.seeAll') || 'See All'}</Text>
-          </TouchableOpacity>
-        </View>
-        {isLoading ? (
-          <Text style={styles.loadingText}>{t('common.loading') || 'Loading...'}</Text>
-        ) : featuredPlaces.length > 0 ? (
-          <FlatList
-            data={featuredPlaces}
-            renderItem={({ item }) => (
-              <PlaceCard place={item} onPress={() => handlePlacePress(item)} />
-            )}
-            keyExtractor={(item) => item.id.toString()}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.placesList}
-          />
-        ) : (
-          <Card style={styles.emptyCard}>
-            <Text style={styles.emptyText}>
-              {t('home.noBusinessesFound') || 'No businesses found'}
-            </Text>
-          </Card>
-        )}
-      </View>
-
-      {/* Key Highlights */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          {t('home.everythingYouNeed') || 'Everything You Need'}
-        </Text>
-        <Text style={styles.sectionSubtitle}>
-          {t('home.featuresSubtitle') || 'Discover what makes us different'}
-        </Text>
-        {keyHighlights.map((highlight, index) => (
-          <Card key={index} style={styles.highlightCard}>
-            <View style={styles.highlightContent}>
-              <View style={[styles.highlightIcon, { backgroundColor: highlight.color }]}>
-                <Text style={styles.highlightIconText}>{highlight.icon}</Text>
-              </View>
-              <View style={styles.highlightText}>
-                <Text style={styles.highlightTitle}>{highlight.title}</Text>
-                <Text style={styles.highlightDescription}>{highlight.description}</Text>
-              </View>
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header Content */}
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <View style={styles.headerBranding}>
+              <Logo width={32} height={32} color="#FFFFFF" animated={false} />
+              <Text style={styles.headerTitle}>Linkuup</Text>
             </View>
-          </Card>
-        ))}
-      </View>
+            <TouchableOpacity 
+              style={styles.notificationButton}
+              onPress={() => navigation.navigate('Notifications' as never)}
+            >
+              <MaterialCommunityIcons name="bell-outline" size={24} color="#FFFFFF" />
+              <View style={styles.notificationBadge} />
+            </TouchableOpacity>
+          </View>
 
-      {/* CTA Section */}
-      <View style={styles.ctaSection}>
-        <Card style={styles.ctaCard}>
-          <Text style={styles.ctaTitle}>
-            {t('home.startFreeTrial') || 'Start Your Free Trial'}
-          </Text>
-          <Text style={styles.ctaDescription}>
-            {t('home.startFreeTrialDesc') || 'Join thousands of businesses using LinkUup'}
-          </Text>
-          <Button
-            title={t('home.startFreeTrialButton') || 'Get Started Free'}
-            onPress={() => navigation.navigate('Register' as never)}
-            variant="primary"
-            size="lg"
-            style={styles.ctaButton}
-          />
-        </Card>
-      </View>
-    </ScrollView>
+          <View style={styles.welcomeContainer}>
+            <Text style={styles.welcomeText}>
+              {t('home.goodMorning') || 'Good morning,'} {user?.name?.split(' ')[0] || 'Guest'}!
+            </Text>
+            <Text style={styles.dateText}>
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </Text>
+          </View>
+
+          {/* Search Bar */}
+          <View style={styles.searchWrapper}>
+            <SearchBar
+              placeholder={t('nav.searchPlaceholder') || 'Find services near you...'}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSearch={handleSearch}
+              onFocus={() => navigation.navigate('Search' as never)}
+              style={styles.searchBar}
+            />
+          </View>
+
+          {/* Categories */}
+          <View style={styles.categoriesSection}>
+            <Text style={styles.sectionTitle}>{t('home.categories') || 'Categories'}</Text>
+            <View style={styles.categoriesRow}>
+              {categories.map((cat) => (
+                <TouchableOpacity 
+                  key={cat.id} 
+                  style={styles.categoryItem}
+                  onPress={() => handleCategoryPress(cat)}
+                >
+                  <View style={[
+                    styles.categoryIconContainer, 
+                    { backgroundColor: theme.colors.backgroundLight }
+                  ]}>
+                    <MaterialCommunityIcons 
+                      name={cat.icon as any} 
+                      size={24} 
+                      color={theme.colors.textLight}
+                    />
+                  </View>
+                  <Text style={styles.categoryName}>{cat.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* Popular Near You */}
+        <View style={styles.popularSection}>
+          <Text style={styles.sectionTitleLarge}>{t('home.popularNearYou') || 'Popular Near You'}</Text>
+          
+          {isLoading ? (
+            <Text style={styles.loadingText}>{t('common.loading') || 'Loading...'}</Text>
+          ) : featuredPlaces.length > 0 ? (
+            <View>
+              {featuredPlaces.map((place) => (
+                <PlaceCard 
+                  key={place.id} 
+                  place={place} 
+                  onPress={() => handlePlacePress(place)} 
+                  variant="large"
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>
+                {t('home.noBusinessesFound') || 'No businesses found nearby.'}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Bottom Padding */}
+        <View style={{ height: 80 }} />
+      </ScrollView>
+    </View>
   );
 };
 
@@ -225,14 +196,43 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.backgroundLight,
   },
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 240,
+    backgroundColor: theme.colors.primary,
+    zIndex: 0,
+  },
+  headerCurve: {
+    position: 'absolute',
+    bottom: -50,
+    left: 0,
+    right: 0,
+    height: 100,
+    backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: width / 2,
+    borderBottomRightRadius: width / 2,
+    transform: [{ scaleX: 1.5 }],
+  },
+  scrollView: {
+    flex: 1,
+    zIndex: 1,
+  },
+  scrollContent: {
+    paddingBottom: theme.spacing.xl,
+  },
   header: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
+  },
+  headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.lg,
   },
   headerBranding: {
     flexDirection: 'row',
@@ -244,160 +244,100 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight.bold,
     color: '#FFFFFF',
   },
-  heroSection: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xl,
-    backgroundColor: theme.colors.primary,
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-    borderRadius: theme.borderRadius.xl,
-  },
-  heroTitle: {
-    fontSize: theme.typography.fontSize['3xl'],
-    fontWeight: theme.typography.fontWeight.bold,
-    color: '#FFFFFF',
-    marginBottom: theme.spacing.sm,
-  },
-  heroSubtitle: {
-    fontSize: theme.typography.fontSize.xl,
-    color: '#FFFFFF',
-    marginBottom: theme.spacing.sm,
-  },
-  heroDescription: {
-    fontSize: theme.typography.fontSize.base,
-    color: '#FFFFFF',
-    opacity: 0.9,
-    marginBottom: theme.spacing.md,
-  },
-  heroButtons: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-  },
-  heroButton: {
-    flex: 1,
-  },
-  section: {
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.xl,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  sectionTitle: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.textLight,
-    marginBottom: theme.spacing.sm,
-  },
-  sectionSubtitle: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.placeholderLight,
-    marginBottom: theme.spacing.md,
-  },
-  seeAllText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.primary,
-    fontWeight: theme.typography.fontWeight.medium,
-  },
-  categoriesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginTop: theme.spacing.sm,
-  },
-  categoryCard: {
-    width: '23%',
-    alignItems: 'center',
-    padding: theme.spacing.sm,
-    backgroundColor: theme.colors.backgroundLight,
-    borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.sm,
-    ...theme.shadows.sm,
-  },
-  categoryIcon: {
-    fontSize: 32,
-    marginBottom: theme.spacing.xs,
-  },
-  categoryName: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.textLight,
-    textAlign: 'center',
-    fontWeight: theme.typography.fontWeight.medium,
-  },
-  placesList: {
-    paddingRight: theme.spacing.md,
-  },
-  emptyCard: {
-    padding: theme.spacing.xl,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.placeholderLight,
-  },
-  loadingText: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.placeholderLight,
-    textAlign: 'center',
-    padding: theme.spacing.xl,
-  },
-  highlightCard: {
-    marginBottom: theme.spacing.md,
-  },
-  highlightContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  highlightIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: theme.borderRadius.full,
+  notificationButton: {
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: theme.spacing.md,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    position: 'relative',
   },
-  highlightIconText: {
-    fontSize: 24,
+  notificationBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.secondary,
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary,
   },
-  highlightText: {
-    flex: 1,
+  welcomeContainer: {
+    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.lg,
   },
-  highlightTitle: {
+  welcomeText: {
+    fontSize: theme.typography.fontSize['2xl'],
+    fontWeight: theme.typography.fontWeight.bold,
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  dateText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  searchWrapper: {
+    marginBottom: theme.spacing.lg,
+  },
+  searchBar: {
+    // Override styles if needed, SearchBar component might need adjustment to be fully custom
+    // Assuming SearchBar component is flexible
+  },
+  categoriesSection: {
+    marginTop: theme.spacing.sm,
+  },
+  sectionTitle: {
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.textLight,
+    marginBottom: theme.spacing.md,
+  },
+  categoriesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+  },
+  categoryItem: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+    width: '18%', // 5 items -> roughly 20% each
+  },
+  categoryIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: theme.spacing.xs,
   },
-  highlightDescription: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.placeholderLight,
+  categoryName: {
+    fontSize: 10,
+    color: theme.colors.textLight,
+    fontWeight: theme.typography.fontWeight.medium,
+    textAlign: 'center',
   },
-  ctaSection: {
-    paddingHorizontal: theme.spacing.md,
-    paddingBottom: theme.spacing.xl,
+  popularSection: {
+    padding: theme.spacing.lg,
   },
-  ctaCard: {
-    padding: theme.spacing.xl,
-    alignItems: 'center',
-  },
-  ctaTitle: {
-    fontSize: theme.typography.fontSize['2xl'],
+  sectionTitleLarge: {
+    fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.textLight,
-    marginBottom: theme.spacing.sm,
-    textAlign: 'center',
-  },
-  ctaDescription: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.placeholderLight,
     marginBottom: theme.spacing.lg,
-    textAlign: 'center',
   },
-  ctaButton: {
-    width: '100%',
+  loadingText: {
+    textAlign: 'center',
+    color: theme.colors.placeholderLight,
+    marginTop: theme.spacing.lg,
+  },
+  emptyState: {
+    alignItems: 'center',
+    marginTop: theme.spacing.lg,
+  },
+  emptyText: {
+    color: theme.colors.placeholderLight,
   },
 });
 

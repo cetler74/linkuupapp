@@ -53,7 +53,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({ state, descriptors, navigat
             'Places': 'Places',
             'Bookings': 'Bookings',
             'Customers': 'Customers',
-            'Employees': 'Employees',
+            'Staff': 'Staff',
             'Rewards': 'Rewards',
             'Campaigns': 'Campaigns',
             'TimeOff': 'Time Off',

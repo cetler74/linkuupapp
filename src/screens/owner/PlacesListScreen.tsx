@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, StatusBar, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { ownerAPI, type Place, getImageUrl } from '../../api/api';
@@ -9,6 +9,8 @@ import Button from '../../components/ui/Button';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import Logo from '../../components/common/Logo';
+
+const { width } = Dimensions.get('window');
 
 const PlacesListScreen = () => {
   const { t } = useTranslation();
@@ -26,7 +28,7 @@ const PlacesListScreen = () => {
       setIsLoading(true);
       const response = await ownerAPI.getOwnerPlaces();
       const placesArray = Array.isArray(response) ? response : [];
-      
+
       // The list endpoint doesn't include images, so we fetch images separately using the images endpoint
       // Fetch images for all places in parallel
       const placesWithImages = await Promise.all(
@@ -48,17 +50,7 @@ const PlacesListScreen = () => {
           }
         })
       );
-      
-      console.log('📋 Places fetched with images:', placesWithImages.length);
-      placesWithImages.forEach((place, index) => {
-        console.log(`Place ${index + 1} (${place.nome}):`, {
-          id: place.id,
-          hasImages: !!place.images,
-          imagesCount: place.images?.length || 0,
-          firstImageUrl: place.images?.[0]?.image_url || 'none',
-        });
-      });
-      
+
       setPlaces(placesWithImages);
     } catch (error) {
       console.error('Error fetching places:', error);
@@ -89,7 +81,13 @@ const PlacesListScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+
+      {/* Header Background with Curve */}
+      <View style={styles.headerBackground}>
+        <View style={styles.headerCurve} />
+      </View>
+
       <View style={styles.header}>
         <View style={styles.headerBranding}>
           <Logo width={32} height={32} color="#FFFFFF" animated={false} />
@@ -108,14 +106,21 @@ const PlacesListScreen = () => {
         <ScrollView
           contentContainerStyle={styles.emptyContainer}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#FFFFFF"
+              colors={[theme.colors.primary]}
+            />
           }
         >
-          <MaterialCommunityIcons
-            name="office-building-outline"
-            size={64}
-            color={theme.colors.placeholderLight}
-          />
+          <View style={styles.emptyIconContainer}>
+            <MaterialCommunityIcons
+              name="office-building-outline"
+              size={64}
+              color={theme.colors.primary}
+            />
+          </View>
           <Text style={styles.emptyTitle}>
             {t('places.noPlaces') || 'No Places Yet'}
           </Text>
@@ -135,34 +140,27 @@ const PlacesListScreen = () => {
           style={styles.placesList}
           contentContainerStyle={styles.placesListContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#FFFFFF"
+              colors={[theme.colors.primary]}
+            />
           }
         >
           {places.map((place) => {
             const firstImage = place.images && place.images.length > 0 ? place.images[0] : null;
             const rawImageUrl = firstImage?.image_url;
-            const imageUrl = rawImageUrl && rawImageUrl.trim() !== '' 
-              ? getImageUrl(rawImageUrl) 
+            const imageUrl = rawImageUrl && rawImageUrl.trim() !== ''
+              ? getImageUrl(rawImageUrl)
               : null;
             const hasValidImage = imageUrl && imageUrl.trim() !== '';
-
-            // Debug logging for image issues
-            if (place.nome === 'Nails mall' || !hasValidImage) {
-              console.log(`🔍 Image debug for "${place.nome}":`, {
-                hasImages: !!place.images,
-                imagesLength: place.images?.length || 0,
-                firstImage: firstImage,
-                rawImageUrl: rawImageUrl,
-                imageUrl: imageUrl,
-                hasValidImage: hasValidImage,
-              });
-            }
 
             return (
               <TouchableOpacity
                 key={place.id}
                 onPress={() => handlePlacePress(place)}
-                activeOpacity={0.7}
+                activeOpacity={0.9}
               >
                 <Card style={styles.placeCard}>
                   <View style={styles.placeContent}>
@@ -177,7 +175,7 @@ const PlacesListScreen = () => {
                       <View style={styles.placeThumbnailPlaceholder}>
                         <MaterialCommunityIcons
                           name="image-outline"
-                          size={32}
+                          size={40}
                           color={theme.colors.placeholderLight}
                         />
                       </View>
@@ -185,35 +183,21 @@ const PlacesListScreen = () => {
                     <View style={styles.placeInfoContainer}>
                       <View style={styles.placeHeader}>
                         <View style={styles.placeInfo}>
-                          <Text style={styles.placeName}>{place.nome}</Text>
-                          <Text style={styles.placeType}>{place.tipo}</Text>
+                          <Text style={styles.placeName} numberOfLines={1}>{place.nome}</Text>
+                          <Text style={styles.placeType} numberOfLines={1}>{place.tipo}</Text>
                         </View>
-                        <View style={styles.headerRight}>
-                          {place.is_active !== false ? (
-                            <View style={styles.activeBadge}>
-                              <Text style={styles.activeBadgeText}>
-                                {t('places.active') || 'Active'}
-                              </Text>
-                            </View>
-                          ) : (
-                            <View style={styles.inactiveBadge}>
-                              <Text style={styles.inactiveBadgeText}>
-                                {t('places.inactive') || 'Inactive'}
-                              </Text>
-                            </View>
-                          )}
-                          <TouchableOpacity
-                            onPress={() => handleEditPlace(place)}
-                            style={styles.editButton}
-                          >
-                            <MaterialCommunityIcons
-                              name="pencil"
-                              size={20}
-                              color={theme.colors.primary}
-                            />
-                          </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity
+                          onPress={() => handleEditPlace(place)}
+                          style={styles.editButton}
+                        >
+                          <MaterialCommunityIcons
+                            name="pencil"
+                            size={20}
+                            color={theme.colors.primary}
+                          />
+                        </TouchableOpacity>
                       </View>
+
                       <View style={styles.placeDetails}>
                         {place.cidade && (
                           <View style={styles.detailRow}>
@@ -222,23 +206,31 @@ const PlacesListScreen = () => {
                               size={16}
                               color={theme.colors.placeholderLight}
                             />
-                            <Text style={styles.detailText}>{place.cidade}</Text>
+                            <Text style={styles.detailText} numberOfLines={1}>{place.cidade}</Text>
                           </View>
                         )}
-                        {place.booking_enabled !== undefined && (
-                          <View style={styles.detailRow}>
-                            <MaterialCommunityIcons
-                              name={place.booking_enabled ? 'check-circle' : 'close-circle'}
-                              size={16}
-                              color={place.booking_enabled ? '#10b981' : theme.colors.placeholderLight}
-                            />
-                            <Text style={styles.detailText}>
-                              {place.booking_enabled
-                                ? t('places.bookingEnabled') || 'Booking Enabled'
-                                : t('places.bookingDisabled') || 'Booking Disabled'}
+
+                        <View style={styles.statusRow}>
+                          <View style={[styles.statusBadge, place.is_active !== false ? styles.activeBadge : styles.inactiveBadge]}>
+                            <Text style={[styles.statusText, place.is_active !== false ? styles.activeText : styles.inactiveText]}>
+                              {place.is_active !== false ? (t('places.active') || 'Active') : (t('places.inactive') || 'Inactive')}
                             </Text>
                           </View>
-                        )}
+
+                          {place.booking_enabled !== undefined && (
+                            <View style={[styles.statusBadge, place.booking_enabled ? styles.bookingEnabledBadge : styles.bookingDisabledBadge]}>
+                              <MaterialCommunityIcons
+                                name={place.booking_enabled ? 'calendar-check' : 'calendar-remove'}
+                                size={12}
+                                color={place.booking_enabled ? theme.colors.success : theme.colors.placeholderLight}
+                                style={{ marginRight: 4 }}
+                              />
+                              <Text style={[styles.statusText, place.booking_enabled ? styles.bookingEnabledText : styles.bookingDisabledText]}>
+                                {place.booking_enabled ? 'Bookings' : 'No Bookings'}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
                     </View>
                   </View>
@@ -266,14 +258,34 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.backgroundLight,
   },
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 180,
+    backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  headerCurve: {
+    position: 'absolute',
+    bottom: -50,
+    left: 0,
+    right: 0,
+    height: 100,
+    backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: width / 2,
+    borderBottomRightRadius: width / 2,
+    transform: [{ scaleX: 1.5 }],
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
   },
   headerBranding: {
     flexDirection: 'row',
@@ -282,19 +294,20 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold as '700',
+    fontWeight: theme.typography.fontWeight.bold,
     color: '#FFFFFF',
   },
   placesList: {
     flex: 1,
   },
   placesListContent: {
-    padding: theme.spacing.md,
+    padding: theme.spacing.lg,
+    paddingBottom: 80, // Space for FAB
   },
   fab: {
     position: 'absolute',
-    right: theme.spacing.md,
-    bottom: theme.spacing.md,
+    right: theme.spacing.lg,
+    bottom: theme.spacing.lg,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -308,89 +321,110 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   placeCard: {
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
     overflow: 'hidden',
     padding: 0,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 0,
+    ...theme.shadows.md,
   },
   placeContent: {
-    flexDirection: 'row',
-    minHeight: 120,
+    flexDirection: 'column',
   },
   placeThumbnail: {
-    width: 120,
-    height: '100%',
+    width: '100%',
+    height: 160,
     backgroundColor: theme.colors.borderLight,
-  } as const,
+  },
   placeThumbnailPlaceholder: {
-    width: 120,
-    alignSelf: 'stretch',
-    backgroundColor: theme.colors.borderLight,
+    width: '100%',
+    height: 160,
+    backgroundColor: theme.colors.backgroundLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   placeInfoContainer: {
-    flex: 1,
     padding: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
   },
   placeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
   },
   placeInfo: {
     flex: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
+    marginRight: theme.spacing.sm,
   },
   editButton: {
     padding: theme.spacing.xs,
+    backgroundColor: `${theme.colors.primary}10`,
+    borderRadius: theme.borderRadius.full,
   },
   placeName: {
     fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold as '700',
+    fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.textLight,
-    marginBottom: theme.spacing.xs,
+    marginBottom: 2,
   },
   placeType: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.placeholderLight,
-  },
-  activeBadge: {
-    backgroundColor: '#10b98120',
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.full,
-  },
-  activeBadgeText: {
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: theme.typography.fontWeight.bold as '700',
-    color: '#10b981',
-  },
-  inactiveBadge: {
-    backgroundColor: `${theme.colors.placeholderLight}20`,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.full,
-  },
-  inactiveBadgeText: {
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: theme.typography.fontWeight.bold as '700',
-    color: theme.colors.placeholderLight,
+    fontWeight: theme.typography.fontWeight.medium,
   },
   placeDetails: {
-    gap: theme.spacing.xs,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.xs,
+    gap: 4,
   },
   detailText: {
     fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.textLight,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: theme.borderRadius.md,
+  },
+  activeBadge: {
+    backgroundColor: `${theme.colors.success}15`,
+  },
+  inactiveBadge: {
+    backgroundColor: theme.colors.borderLight,
+  },
+  bookingEnabledBadge: {
+    backgroundColor: `${theme.colors.info}15`,
+  },
+  bookingDisabledBadge: {
+    backgroundColor: theme.colors.borderLight,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: theme.typography.fontWeight.bold,
+  },
+  activeText: {
+    color: theme.colors.success,
+  },
+  inactiveText: {
+    color: theme.colors.placeholderLight,
+  },
+  bookingEnabledText: {
+    color: theme.colors.info,
+  },
+  bookingDisabledText: {
     color: theme.colors.placeholderLight,
   },
   loadingContainer: {
@@ -404,18 +438,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: theme.spacing.xl,
   },
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: `${theme.colors.primary}10`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.lg,
+  },
   emptyTitle: {
     fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold as '700',
+    fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.textLight,
-    marginTop: theme.spacing.md,
     marginBottom: theme.spacing.sm,
   },
   emptyText: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.placeholderLight,
     textAlign: 'center',
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
   },
   emptyButton: {
     width: '100%',
