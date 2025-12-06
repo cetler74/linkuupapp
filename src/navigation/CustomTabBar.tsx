@@ -14,11 +14,17 @@ interface CustomTabBarProps {
   state: any;
   descriptors: any;
   navigation: any;
+  topBorderColor?: string;
 }
 
-const CustomTabBar: React.FC<CustomTabBarProps> = ({ state, descriptors, navigation }) => {
+const CustomTabBar: React.FC<CustomTabBarProps> = ({ state, descriptors, navigation, topBorderColor }) => {
+  const containerStyle = [
+    styles.container,
+    topBorderColor ? { borderTopColor: topBorderColor } : null,
+  ];
+
   return (
-    <View style={styles.container}>
+    <View style={containerStyle}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

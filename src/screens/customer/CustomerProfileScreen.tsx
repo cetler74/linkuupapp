@@ -101,7 +101,7 @@ const CustomerProfileScreen = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
       {/* Header Background with Curve */}
       <View style={styles.headerBackground}>
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 240,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#000000',
     zIndex: 0,
   },
   headerCurve: {
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 100,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#000000',
     borderBottomLeftRadius: width / 2,
     borderBottomRightRadius: width / 2,
     transform: [{ scaleX: 1.5 }],
