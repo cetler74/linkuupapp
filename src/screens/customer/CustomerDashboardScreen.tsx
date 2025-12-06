@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#000000',
   },
   headerTitle: {
     fontSize: theme.typography.fontSize['2xl'],

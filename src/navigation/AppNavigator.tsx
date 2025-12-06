@@ -57,7 +57,7 @@ const Tab = createBottomTabNavigator();
 // Customer Tab Navigator
 const CustomerTabs = () => (
   <Tab.Navigator
-    tabBar={(props) => <CustomTabBar {...props} />}
+    tabBar={(props) => <CustomTabBar {...props} topBorderColor="#000000" />}
     screenOptions={({ route }) => ({
       tabBarIcon: ({ focused }) => {
         let iconName: any;
