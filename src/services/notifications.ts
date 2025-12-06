@@ -72,7 +72,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
         name: 'Booking Reminders',
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#1E90FF',
+        lightColor: '#000000',
         sound: 'default',
         description: 'Notifications for upcoming booking reminders',
       });
@@ -81,7 +81,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
         name: 'Booking Updates',
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#1E90FF',
+        lightColor: '#000000',
         sound: 'default',
         description: 'Notifications for booking status changes',
       });
@@ -90,7 +90,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
         name: 'New Bookings',
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#1E90FF',
+        lightColor: '#000000',
         sound: 'default',
         description: 'Notifications for new booking requests',
       });

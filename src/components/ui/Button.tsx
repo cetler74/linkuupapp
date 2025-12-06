@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   secondaryText: {
-    color: '#FFFFFF',
+    color: '#000000',
   },
   outlineText: {
     color: theme.colors.primary,

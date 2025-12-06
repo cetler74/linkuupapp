@@ -76,7 +76,7 @@ const CustomerTabs = () => (
           iconName = 'help-circle-outline';
         }
 
-        return <MaterialCommunityIcons name={iconName} size={24} color={focused ? '#1E90FF' : '#333333'} />;
+        return <MaterialCommunityIcons name={iconName} size={24} color={focused ? '#000000' : '#666666'} />;
       },
       tabBarLabel: route.name,
       headerShown: false,
@@ -122,7 +122,7 @@ const OwnerTabs = () => (
           iconName = 'help-circle-outline';
         }
 
-        return <MaterialCommunityIcons name={iconName} size={24} color={focused ? '#1E90FF' : '#333333'} />;
+        return <MaterialCommunityIcons name={iconName} size={24} color={focused ? '#000000' : '#666666'} />;
       },
       tabBarLabel: route.name,
       headerShown: false,
