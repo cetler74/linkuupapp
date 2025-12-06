@@ -1,20 +1,20 @@
 // Theme extracted from design screens
 export const theme = {
   colors: {
-    primary: '#3b82f6', // Brand Blue
-    secondary: '#03DAC6', // Teal
-    backgroundLight: '#F5F7FA', // Light Blue-Grey
-    backgroundDark: '#121212',
+    primary: '#000000', // Modern Black Brand
+    secondary: '#F5F5F5', // Light Gray accent
+    backgroundLight: '#F5F7FA', // Light Grey
+    backgroundDark: '#0a0a0a', // Dark Black
     surface: '#FFFFFF',
     textLight: '#1f2937',
     textDark: '#f8fafc',
     borderLight: '#e5e7eb',
-    borderDark: '#334155',
+    borderDark: '#1a1a1a',
     placeholderLight: '#9ca3af',
     placeholderDark: '#94a3b8',
     success: '#10B981',
     warning: '#F59E0B',
-    info: '#3B82F6',
+    info: '#000000', // Black for info
     error: '#EF4444',
   },
   typography: {

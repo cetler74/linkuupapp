@@ -86,7 +86,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({ state, descriptors, navigat
                 <MaterialCommunityIcons
                   name={iconName as any}
                   size={28}
-                  color={isFocused ? '#1E90FF' : '#333333'}
+                  color={isFocused ? '#000000' : '#666666'}
                 />
                 <Text style={[styles.label, isFocused && styles.labelFocused]} numberOfLines={1}>
                   {label}
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     minWidth: 80,
   },
   tabFocused: {
-    backgroundColor: '#1E90FF20',
+    backgroundColor: '#00000020',
   },
   tabContent: {
     alignItems: 'center',
@@ -136,11 +136,11 @@ const styles = StyleSheet.create({
   label: {
     fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.medium,
-    color: '#333333',
+    color: '#666666',
     textAlign: 'center',
   },
   labelFocused: {
-    color: '#1E90FF',
+    color: '#000000',
     fontWeight: theme.typography.fontWeight.bold,
   },
 });
