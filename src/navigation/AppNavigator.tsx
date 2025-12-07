@@ -19,6 +19,7 @@ import HomeScreen from '../screens/customer/HomeScreen';
 import SearchScreen from '../screens/customer/SearchScreen';
 import CustomerDashboardScreen from '../screens/customer/CustomerDashboardScreen';
 import CustomerBookingsScreen from '../screens/customer/CustomerBookingsScreen';
+import CustomerBookingDetailsScreen from '../screens/customer/BookingDetailsScreen';
 import CustomerRewardsScreen from '../screens/customer/CustomerRewardsScreen';
 import CustomerProfileScreen from '../screens/customer/CustomerProfileScreen';
 import PlaceDetailsScreen from '../screens/customer/PlaceDetailsScreen';
@@ -30,6 +31,7 @@ import OwnerDashboardScreen from '../screens/owner/OwnerDashboardScreen';
 import OwnerPlaceDetailsScreen from '../screens/owner/PlaceDetailsScreen';
 import PlacesListScreen from '../screens/owner/PlacesListScreen';
 import BookingsScreen from '../screens/owner/BookingsScreen';
+import OwnerBookingDetailsScreen from '../screens/owner/BookingDetailsScreen';
 import CustomersScreen from '../screens/owner/CustomersScreen';
 import OwnerSettingsScreen from '../screens/owner/OwnerSettingsScreen';
 import AddPlaceScreen from '../screens/owner/AddPlaceScreen';
@@ -196,6 +198,7 @@ export const AppNavigator = () => {
           <>
             <Stack.Screen name="OwnerTabs" component={OwnerTabs} />
             <Stack.Screen name="PlaceDetails" component={OwnerPlaceDetailsScreen} />
+            <Stack.Screen name="BookingDetails" component={OwnerBookingDetailsScreen} />
             <Stack.Screen name="AddPlace" component={AddPlaceScreen} />
             <Stack.Screen name="EditPlace" component={EditPlaceScreen} />
             <Stack.Screen name="AddBooking" component={AddBookingScreen} />
@@ -213,6 +216,7 @@ export const AppNavigator = () => {
           <>
             <Stack.Screen name="CustomerTabs" component={CustomerTabs} />
             <Stack.Screen name="PlaceDetails" component={PlaceDetailsScreen} />
+            <Stack.Screen name="BookingDetails" component={CustomerBookingDetailsScreen} />
             <Stack.Screen name="ServiceSelection" component={ServiceSelectionScreen} />
             <Stack.Screen name="EmployeeSelection" component={EmployeeSelectionScreen} />
             <Stack.Screen name="DateTimeSelection" component={DateTimeSelectionScreen} />
